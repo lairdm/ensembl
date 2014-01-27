@@ -372,6 +372,7 @@ sub get_available_adaptors {
     DensityType                         => 'Bio::EnsEMBL::DBSQL::DensityTypeAdaptor',
     DnaAlignFeature                     => 'Bio::EnsEMBL::DBSQL::DnaAlignFeatureAdaptor',
     Exon                                => 'Bio::EnsEMBL::DBSQL::ExonAdaptor',
+    Expression                          => 'Bio::EnsEMBL::DBSQL::ExpressionAdaptor',
     Gene                                => 'Bio::EnsEMBL::DBSQL::GeneAdaptor',
     IntronSupportingEvidence            => 'Bio::EnsEMBL::DBSQL::IntronSupportingEvidenceAdaptor',
     KaryotypeBand                       => 'Bio::EnsEMBL::DBSQL::KaryotypeBandAdaptor',

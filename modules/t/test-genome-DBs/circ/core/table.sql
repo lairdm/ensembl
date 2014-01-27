@@ -244,6 +244,17 @@ CREATE TABLE `exon` (
   KEY `stable_id_idx` (`stable_id`,`version`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6885 DEFAULT CHARSET=latin1;
 
+CREATE TABLE `exon_expression` (
+  `exon_expression_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `exon_id` int(10) unsigned NOT NULL,
+  `tissue_id` int(10) unsigned NOT NULL,
+  `value` text NOT NULL,
+  `analysis_id` smallint(5) unsigned NOT NULL,
+  `value_type` enum('count','RPKM') NOT NULL,
+  PRIMARY KEY (`exon_expression_id`),
+  UNIQUE KEY `exon_expression_idx` (`exon_id`,`tissue_id`,`analysis_id`,`value_type`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
 CREATE TABLE `exon_transcript` (
   `exon_id` int(10) unsigned NOT NULL,
   `transcript_id` int(10) unsigned NOT NULL,
@@ -325,6 +336,17 @@ CREATE TABLE `gene_attrib` (
   KEY `val_only_idx` (`value`(40)),
   KEY `gene_idx` (`gene_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+CREATE TABLE `gene_expression` (
+  `gene_expression_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `gene_id` int(10) unsigned NOT NULL,
+  `tissue_id` int(10) unsigned NOT NULL,
+  `value` text NOT NULL,
+  `analysis_id` smallint(5) unsigned NOT NULL,
+  `value_type` enum('count','RPKM') NOT NULL,
+  PRIMARY KEY (`gene_expression_id`),
+  UNIQUE KEY `gene_expression_idx` (`gene_id`,`tissue_id`,`analysis_id`,`value_type`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 CREATE TABLE `genome_statistics` (
   `genome_statistics_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
@@ -469,7 +491,7 @@ CREATE TABLE `meta` (
   PRIMARY KEY (`meta_id`),
   UNIQUE KEY `species_key_value_idx` (`species_id`,`meta_key`,`meta_value`),
   KEY `species_value_idx` (`species_id`,`meta_value`)
-) ENGINE=InnoDB AUTO_INCREMENT=75 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=76 DEFAULT CHARSET=latin1;
 
 CREATE TABLE `meta_coord` (
   `table_name` varchar(40) NOT NULL,
@@ -802,6 +824,15 @@ CREATE TABLE `supporting_feature` (
   KEY `feature_idx` (`feature_type`,`feature_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 MAX_ROWS=100000000 AVG_ROW_LENGTH=80;
 
+CREATE TABLE `tissue` (
+  `tissue_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `ontology` varchar(64) NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `description` text,
+  PRIMARY KEY (`tissue_id`),
+  UNIQUE KEY `name_idx` (`name`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
 CREATE TABLE `transcript` (
   `transcript_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `gene_id` int(10) unsigned DEFAULT NULL,
@@ -839,6 +870,17 @@ CREATE TABLE `transcript_attrib` (
   KEY `val_only_idx` (`value`(40)),
   KEY `transcript_idx` (`transcript_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+CREATE TABLE `transcript_expression` (
+  `transcript_expression_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `transcript_id` int(10) unsigned NOT NULL,
+  `tissue_id` int(10) unsigned NOT NULL,
+  `value` text NOT NULL,
+  `analysis_id` smallint(5) unsigned NOT NULL,
+  `value_type` enum('count','RPKM') NOT NULL,
+  PRIMARY KEY (`transcript_expression_id`),
+  UNIQUE KEY `transcript_expression_idx` (`transcript_id`,`tissue_id`,`analysis_id`,`value_type`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 CREATE TABLE `transcript_intron_supporting_evidence` (
   `transcript_id` int(10) unsigned NOT NULL,

@@ -1423,6 +1423,45 @@ sub add_Exon {
   $self->recalculate_coordinates();
 } ## end sub add_Exon
 
+=head2 get_all_Expressions
+
+  Arg [1]    : (optional) String $tissue
+               The name of the tissue to retrieve values for
+  Example    : my ($brain) = @{ $transcript->get_all_Expressions('brain') };
+               my @transcript_expressions = @{ $transcript->get_all_Expressions};
+  Description: Gets a list of Expressions of this transcript.
+               Optionally just get Expressions for given tissue.
+  Returntype : Listref of Bio::EnsEMBL::Expression
+  Exceptions : warning if transcript does not have attached adaptor and attempts lazy
+               load.
+  Caller     : general
+  Status     : Stable
+
+=cut
+
+sub get_all_Expressions {
+  my $self = shift;
+  my $tissue = shift;
+
+  if ( ! exists $self->{'expression' } ) {
+    if (!$self->adaptor() ) {
+      return [];
+    }
+
+    my $expression_adaptor = $self->adaptor->db->get_ExpressionAdaptor();
+    $self->{'expression'} = $expression_adaptor->fetch_all_by_Transcript($self);
+  }
+
+  if ( defined $tissue) {
+    my @results = grep { uc($_->code()) eq uc($tissue) }
+    @{$self->{'expression'}};
+    return \@results;
+  } else {
+    return $self->{'expression'};
+  }
+}
+
+
 
 =head2 get_all_Exons
 

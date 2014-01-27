@@ -498,6 +498,46 @@ sub canonical_transcript {
 } ## end sub canonical_transcript
 
 
+
+=head2 get_all_Expressions
+
+  Arg [1]    : (optional) String $tissue
+               The name of the tissue to retrieve values for
+  Example    : my ($brain) = @{ $gene->get_all_Expressions('brain') };
+               my @gene_expressions = @{ $gene->get_all_Expressions};
+  Description: Gets a list of Expressions of this gene.
+               Optionally just get Expressions for given tissue.
+  Returntype : Listref of Bio::EnsEMBL::Expression
+  Exceptions : warning if gene does not have attached adaptor and attempts lazy
+               load.
+  Caller     : general
+  Status     : Stable
+
+=cut
+
+sub get_all_Expressions {
+  my $self = shift;
+  my $tissue = shift;
+
+  if ( ! exists $self->{'expression' } ) {
+    if (!$self->adaptor() ) {
+      return [];
+    }
+
+    my $expression_adaptor = $self->adaptor->db->get_ExpressionAdaptor();
+    $self->{'expression'} = $expression_adaptor->fetch_all_by_Gene($self);
+  }
+
+  if ( defined $tissue) {
+    my @results = grep { uc($_->code()) eq uc($tissue) }
+    @{$self->{'expression'}};
+    return \@results;
+  } else {
+    return $self->{'expression'};
+  }
+}
+
+
 =head2 get_all_Attributes
 
   Arg [1]    : (optional) String $attrib_code

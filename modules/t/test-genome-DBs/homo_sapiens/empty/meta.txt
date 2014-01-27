@@ -51,3 +51,4 @@
 100	\N	patch	patch_74_75_d.sql|default_transcript_source
 101	\N	patch	patch_74_75_e.sql|unique_attrib_key
 102	\N	patch	patch_74_75_f.sql|longer_code
+103	\N	patch	patch_74_75_g.sql|expression_data

@@ -55,3 +55,4 @@
 2062	\N	patch	patch_74_75_d.sql|default_transcript_source
 2063	\N	patch	patch_74_75_e.sql|unique_attrib_key
 2064	\N	patch	patch_74_75_f.sql|longer_code
+2065	\N	patch	patch_74_75_g.sql|expression_data

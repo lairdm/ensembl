@@ -319,6 +319,8 @@ INSERT INTO meta (species_id, meta_key, meta_value)
  VALUES (NULL, 'patch', 'patch_74_75_e.sql|unique_attrib_key');
 INSERT INTO meta (species_id, meta_key, meta_value)
  VALUES (NULL, 'patch', 'patch_74_75_f.sql|longer_code');
+INSERT INTO meta (species_id, meta_key, meta_value)
+ VALUES (NULL, 'patch', 'patch_74_75_g.sql|expression_data');
 
 /**
 @table meta_coord
@@ -1370,6 +1372,61 @@ CREATE TABLE ditag_feature (
 
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
+/**
+@table exon_expression
+@desc Stores a valid expression for a given exon and tissue
+
+@column exon_expression_id    Auto-increment primary key
+@column exon_id               Exon linked to the expression
+@column tissue_id             Tissue linked to the expression
+@value                        Value of the expression analysis
+@analysis_id                  Analysis used to generate the expression value
+@value_type                         Type of expression data stored
+                                    Can be a count, an RPKM...
+
+*/
+
+CREATE TABLE exon_expression (
+  exon_expression_id          INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  exon_id                     INT(10) UNSIGNED NOT NULL,
+  tissue_id                   INT(10) UNSIGNED NOT NULL,
+  value                       TEXT NOT NULL,
+  analysis_id                 SMALLINT UNSIGNED NOT NULL,
+  value_type                  ENUM('count', 'RPKM') NOT NULL,
+
+  PRIMARY KEY (exon_expression_id),
+  UNIQUE KEY exon_expression_idx(exon_id, tissue_id, analysis_id, value_type)
+
+
+
+) COLLATE=latin1_swedish_ci ENGINE=MyISAM;
+
+/**
+@table gene_expression
+@desc Stores a valid expression for a given gene and tissue
+
+@column gene_expression_id    Auto-increment primary key
+@column gene_id               Gene linked to the expression
+@column tissue_id             Tissue linked to the expression
+@value                        Value of the expression analysis
+@analysis_id                  Analysis used to generate the expression value
+@value_type                         Type of expression data stored
+                                    Can be a count, an RPKM...
+
+*/
+
+CREATE TABLE gene_expression (
+  gene_expression_id          INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  gene_id                     INT(10) UNSIGNED NOT NULL,
+  tissue_id                   INT(10) UNSIGNED NOT NULL,
+  value                       TEXT NOT NULL,
+  analysis_id                 SMALLINT UNSIGNED NOT NULL,
+  value_type                  ENUM('count', 'RPKM') NOT NULL,
+
+  PRIMARY KEY (gene_expression_id),
+  UNIQUE KEY gene_expression_idx(gene_id, tissue_id, analysis_id, value_type)
+
+) COLLATE=latin1_swedish_ci ENGINE=MyISAM;
 
 /**
 @table intron_supporting_evidence
@@ -1854,6 +1911,32 @@ CREATE TABLE simple_feature (
 
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
+/**
+@table transcript_expression
+@desc Stores a valid expression for a given transcript and tissue
+
+@column transcript_expression_id    Auto-increment primary key
+@column transcript_id               Transcript linked to the expression
+@column tissue_id                   Tissue linked to the expression
+@value                              Value of the expression analysis
+@analysis_id                        Analysis used to generate the expression value
+@value_type                         Type of expression data stored
+                                    Can be a count, an RPKM...
+
+*/
+
+CREATE TABLE transcript_expression (
+  transcript_expression_id          INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  transcript_id                     INT(10) UNSIGNED NOT NULL,
+  tissue_id                   INT(10) UNSIGNED NOT NULL,
+  value                       TEXT NOT NULL,
+  analysis_id                 SMALLINT UNSIGNED NOT NULL,
+  value_type                  ENUM('count', 'RPKM') NOT NULL,
+
+  PRIMARY KEY (transcript_expression_id),
+  UNIQUE KEY transcript_expression_idx(transcript_id, tissue_id, analysis_id, value_type)
+
+) COLLATE=latin1_swedish_ci ENGINE=MyISAM;
 
 /**
 @table transcript_intron_supporting_evidence
@@ -1877,6 +1960,28 @@ previous_exon_id              INT(10) UNSIGNED NOT NULL,
 next_exon_id                  INT(10) UNSIGNED NOT NULL,
 PRIMARY KEY (intron_supporting_evidence_id, transcript_id),
 KEY transcript_idx (transcript_id)
+) COLLATE=latin1_swedish_ci ENGINE=MyISAM;
+
+/**
+@table tissue
+@desc Stores the tissue for which expression data is available
+
+@column tissue_id            Auto-increment primary key
+@column ontology             List of subgroups the tissue is part of
+@colum name                  Name of the tissue
+@column description          Description of the tissue
+
+*/
+
+CREATE TABLE tissue (
+  tissue_id                   INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  ontology                    VARCHAR(64) NOT NULL,
+  name                        VARCHAR(255),
+  description                 TEXT,
+
+  PRIMARY KEY (tissue_id),
+  UNIQUE KEY name_idx (name)
+
 ) COLLATE=latin1_swedish_ci ENGINE=MyISAM;
 
 

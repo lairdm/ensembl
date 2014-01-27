@@ -16,6 +16,7 @@
 72	\N	patch	patch_74_75_d.sql|default_transcript_source
 73	\N	patch	patch_74_75_e.sql|unique_attrib_key
 74	\N	patch	patch_74_75_f.sql|longer_code
+75	\N	patch	patch_74_75_g.sql|expression_data
 1	\N	schema_type	core
 2	\N	schema_version	75
 8	1	assembly.accession	GCA_000292705.1
