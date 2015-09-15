@@ -252,9 +252,6 @@ my %transcript_so_mapping =
    'vaultRNA'				=> 'SO:0002040', # vaultRNA_primary_transcript
    'Y_RNA'				=> 'SO:0000405', # Y_RNA
    
-## Misc non coding RNAs
-
-   
   );
 
 my %utr_so_mapping =
