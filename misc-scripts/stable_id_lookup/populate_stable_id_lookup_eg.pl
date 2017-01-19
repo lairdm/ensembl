@@ -105,7 +105,6 @@ create_db($writeDB) if $create;
 ####my ($dba_species, $lastSID) = get_loaded_species($rdbname); CHANGED
 my ($dba_species, $lastSID) = get_loaded_species($writeDB);
 print("lastSID  + $lastSID\n");
-print Dumper($dba_species);
 
 
 process_dbs($readDB);
@@ -207,12 +206,10 @@ if ($db =~ /([\w\_]+)_(core|otherfeatures)_([\d\_\w]+)/) { ####disable otherfeat
 	
 	if ($dbversion =~ /^$version/) {
 		print "Entered $dbversion\n";
-		
-		
+
 		#next unless $db eq "fungi_ascomycota1_collection_core_32_85_1";
-		
 		if (exists $dba_species->{$species}) {
-			
+
 		    if (exists $dba_species->{$species}->{ID}) {
 		    	warn "* $species : LOADED\n";
 		    	next;
@@ -261,7 +258,6 @@ sub add_species_db {
     my ($dbname, $offset) = @_;
 # 1 comes from species_id = 1 in meta table
     print "From add_species_db\n";
-    warn "- Adding species $dbname (Species ID: ", 1 + $offset, ")\n";
 
     if ($dbname =~ /([\w\_]+)_(core|otherfeatures)_([\d\_\w]+)/) {
 	my ($species, $dbtype, $dbversion) = ($1, $2, $3);
@@ -272,16 +268,14 @@ sub add_species_db {
 	my $dba_read = db_connect($dbname, $readDB) ;
 	my $dba_write = db_connect($writeDB->{"dbname"}, $writeDB) ;
 	
-	#load_ids($dba, $dbtype, $offset); ####CHANGED
-	
-	load_ids($dba_read, $dba_write, $dbtype, $offset);
 	
 	if ($dbtype eq 'core') {
-	    load_species($dba_read, $dba_write, $offset, $dbname);
-	    $lastSID++;
+	  load_species($dba_read, $dba_write, $offset, $dbname);
+      $lastSID++;
 	}
 
-	#$dba->disconnect(); ###CHANGED
+	load_ids($dba_read, $dba_write, $dbtype, $species);
+
 	$dba_read->disconnect();
 	$dba_write->disconnect();
 
@@ -307,11 +301,9 @@ sub add_collection_db {
 	
 	#load_ids($dba, $dbtype, $offset);
 	#load_species($dba, $offset, $dbname);
+    load_species($dba_read, $dba_write, $offset, $dbname);
+	load_ids($dba_read, $dba_write, $dbtype, $species);
 
-	load_ids($dba_read, $dba_write, $dbtype, $offset);
-	load_species($dba_read, $dba_write, $offset, $dbname);
-	
-	#$dba->disconnect(); ###CHANGED
 	$dba_read->disconnect();
 	$dba_write->disconnect();
 	
@@ -351,6 +343,7 @@ sub load_species {
     my @tuples;
 
     foreach my $sid (sort keys %{$shash || {}}) {
+    warn "+++++++++++++ Adding species $dbname (Species ID: ", $sid, ")\n";
 	push(@tuples, sprintf(q{(%s, %s, %s)}, $sid, $dbh_write->quote($shash->{$sid}->{Name}), $dbh_write->quote($shash->{$sid}->{TaxID}))) ;
     }
 
@@ -361,8 +354,9 @@ sub load_species {
     }
 
     eval { 
-    	#print "$insertSQL",join(',', @tuples), "\n";
+    warn "$insertSQL",join(',', @tuples), "\n";
 	$dbh_write->do( $insertSQL . join(',', @tuples) ) ;
+
 	if ($DBI::err) {	    
 	    warn $insertSQL . join(',', @tuples) , "\n" ;
 	    die "ERROR: ", $DBI::errstr;
@@ -374,10 +368,12 @@ sub load_species {
 
 sub load_ids{
 	
-	my ($dbh_read, $dbh_write, $dbtype, $offset) = @_;
+	my ($dbh_read, $dbh_write, $dbtype, $species) = @_;
     
-    print "DbType : $dbtype     Offset : $offset\n";
+    print "DbType : $dbtype     Species : $species\n";
     
+    my $species_id = get_species_id($dbh_write, $species);
+    warn "From load_id => dbtype: $dbtype    Species id : $species_id    === Species: $species\n";
     
     my @stable_id_objects = keys %{$group_objects{$dbtype} || {}};
     
@@ -394,8 +390,7 @@ sub load_ids{
     		#Note: Archive is not needed by ensemblgenomes as the stable_id_event is not populated
     		#It is needed by ensembl. For the time being, we have to assume that the coord_system holds only one species with id of 1
     		#In future ensembl also might need to support multiple databases
-    		my $species_id =1;
-    		$select_sql = "SELECT DISTINCT old_stable_id, $species_id + $offset, '$dbtype', '$object' \
+    		$select_sql = "SELECT DISTINCT old_stable_id, $species_id, '$dbtype', '$object' \
     					   FROM stable_id_event
                            WHERE old_stable_id IS NOT NULL
                            AND type = '$object'
@@ -420,7 +415,7 @@ sub load_ids{
     			
     			if($dbtype eq 'core'){
     				
-    				$select_sql =  "SELECT DISTINCT o.stable_id, cs.species_id + $offset, '$dbtype', '$object_name' \
+    				$select_sql =  "SELECT DISTINCT o.stable_id, $species_id, '$dbtype', '$object_name' \
     				FROM $object o \
     				LEFT JOIN transcript t USING (transcript_id) \
     				LEFT JOIN seq_region sr USING(seq_region_id) \
@@ -428,14 +423,14 @@ sub load_ids{
     				WHERE o.stable_id IS NOT NULL";
     				
     				$select_sql = $test ? $select_sql . " limit 10" : $select_sql;
-    				
+
     				my $rows_inserted = build_insert_sql($select_sql, $dbh_read, $dbh_write);
     				print "Number of rows inserted into $writeDB->{'dbname'}.stable_id_lookup for $dbtype and $object_name =>", $rows_inserted, "\n";
     		
     				
     			}elsif ($dbtype eq 'otherfeatures'){
     				
-    				$select_sql = "SELECT DISTINCT tl.stable_id, cs.species_id + $offset, '$dbtype', '$object_name' \
+    				$select_sql = "SELECT DISTINCT tl.stable_id, $species_id, '$dbtype', '$object_name' \
     				FROM translation tl \
     				LEFT JOIN transcript t USING (transcript_id) \
     				LEFT JOIN analysis a USING (analysis_id) \
@@ -444,7 +439,7 @@ sub load_ids{
     				WHERE logic_name like 'RefSeq_%' OR logic_name like 'CCDS_%'";
     				
     				$select_sql = $test ? $select_sql . " limit 10" : $select_sql;
-    				
+
     				my $rows_inserted = build_insert_sql($select_sql, $dbh_read, $dbh_write);
     				print "Number of rows inserted into $writeDB->{'dbname'}.stable_id_lookup for $dbtype and $object_name =>", $rows_inserted, "\n";
     		
@@ -463,7 +458,7 @@ sub load_ids{
     		if($count){
     			
     			if($dbtype eq 'core'){
-    				$select_sql = "SELECT DISTINCT o.stable_id, cs.species_id + $offset, '$dbtype', '$object_name' \
+    			    $select_sql = "SELECT DISTINCT o.stable_id, $species_id, '$dbtype', '$object_name' \
     				FROM $object o \
     				LEFT JOIN seq_region sr USING(seq_region_id) \
     				LEFT JOIN coord_system cs USING(coord_system_id) \
@@ -479,7 +474,7 @@ sub load_ids{
     			}elsif ($dbtype eq 'otherfeatures'){
     				
     				
-    				$select_sql = "SELECT DISTINCT o.stable_id, cs.species_id + $offset, '$dbtype', '$object_name' \
+    				$select_sql = "SELECT DISTINCT o.stable_id, $species_id, '$dbtype', '$object_name' \
     				FROM $object o \ 	
     				LEFT JOIN analysis a USING (analysis_id) \
     				LEFT JOIN seq_region sr USING(seq_region_id) \
@@ -613,6 +608,17 @@ sub load_ids_deprecated {
 	};
 #	warn "\t $object_name ", time - $t, "s\n";
     }
+}
+
+
+sub get_species_id {
+    my $dbh = shift;
+    my $species = shift;
+    my $sql = qq{SELECT species_id, name, taxonomy_id FROM species WHERE name = ?};
+    my @row = $dbh->selectrow_array($sql,undef,$species);
+    unless (@row) { die "species not found in database"; }
+    my ($species_id,$species_name, $taxid) = @row;
+    return $species_id;
 }
 
 sub get_species {
