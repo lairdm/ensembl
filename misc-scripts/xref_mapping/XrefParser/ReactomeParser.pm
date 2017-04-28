@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -98,9 +99,11 @@ sub run {
   }
 
   my (%uniprot) = %{$self->get_valid_codes("uniprot/",$species_id)};
+  my $is_uniprot = 0;
 
   foreach my $file (@$files) {
     my $reactome_io = $self->get_filehandle($file);
+    if ($file =~ /UniProt/) { $is_uniprot = 1; }
   # Example line:
   # ENSG00000138685 REACT_111045    http://www.reactome.org/PathwayBrowser/#REACT_111045    Developmental Biology   TAS     Homo sapiens
     while (my $line = $reactome_io->getline() ) {
@@ -118,17 +121,19 @@ sub run {
   # 00000074047   REACT_268323    http://www.reactome.org/PathwayBrowser/#REACT_268323    Hedgehog 'off' state    TAS     Homo sapiens
         my $type;
         my $info_type = 'DIRECT';
-        if (defined($uniprot{$ensembl_stable_id})) {
-  # First check if it is a uniprot id
-          foreach my $xref_id (@{$uniprot{$ensembl_stable_id}}){
-            $self->add_dependent_xref({ master_xref_id => $xref_id,
-                                acc            => $reactome_id,
-                                label          => $reactome_id,
-                                desc           => $description,
-                                source_id      => $reactome_uniprot_source_id,
-                                species_id     => $species_id} );
+        if ($is_uniprot) {
+          if (defined($uniprot{$ensembl_stable_id})) {
+    # First check if it is a uniprot id
+            foreach my $xref_id (@{$uniprot{$ensembl_stable_id}}){
+              $self->add_dependent_xref({ master_xref_id => $xref_id,
+                                  acc            => $reactome_id,
+                                  label          => $reactome_id,
+                                  desc           => $description,
+                                  source_id      => $reactome_uniprot_source_id,
+                                  species_id     => $species_id} );
+            }
+            $info_type = 'DEPENDENT';
           }
-          $info_type = 'DEPENDENT';
         }
         elsif ($ensembl_stable_id =~ /G[0-9]*$/) { 
           $type = 'gene';

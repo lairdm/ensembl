@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -80,25 +81,6 @@ sub get_production_name {
   return $self->single_value_by_key('species.production_name');
 }
 
-=head2 get_short_name
-
-  Args          : none
-  Example       : $species = $meta_container->get_short_name();
-  Description   : Obtains the name of the species in a form usable as, for
-                  example, a short label in a GUI.
-  Returntype    : string
-  Exceptions    : none
-  Status        : Deprecated in release 74
-
-=cut
-
-sub get_short_name {
-  my ($self) = @_;
-  deprecate('Call is deprecated. short_name is not in use any more, use get_common_name instead');
-  return $self->single_value_by_key('species.short_name');
-}
-
-
 =head2 get_display_name
 
   Args          : none
@@ -162,47 +144,6 @@ sub get_division {
   return $self->single_value_by_key('species.division');
 }
 
-=head2 get_Species
-
-  Arg [1]    : none
-  Example    : $species = $meta_container->get_Species();
-  Description: Obtains the species from this databases meta table. Call is
-               deprecated; please use other subroutines in this package
-  Returntype : Bio::Species
-  Exceptions : none
-  Caller     : ?
-  Status     : Deprecated
-
-=cut
-
-sub get_Species {
-  my ($self) = @_;
-
-  deprecate('Call is deprecated. Use $self->get_common_name() / $self->get_classification() / $self->get_scientific_name() instead');
-
-  my $common_name = $self->get_common_name();
-  my $classification =
-    $self->list_value_by_key('species.classification');
-  if ( !@$classification ) {
-    return undef;
-  }
-  
-  #Re-create the old classification data structure by adding the scientific
-  #name back onto the classification but with species before genus e.g.
-  # sapiens -> Homo -> Hominade
-  my $scientific_name = $self->get_scientific_name();
-  my ($genus, @sp) = split(/ /, $scientific_name);
-  unshift(@{$classification}, join(q{ }, @sp), $genus);
-  
-  my $species = Bio::Species->new();
-  $species->common_name($common_name);
-  
-  $species->classification($classification, 1); #always force it
-
-  return $species;
-}
-
-
 =head2 get_taxonomy_id
 
   Arg [1]    : none
@@ -218,42 +159,6 @@ sub get_Species {
 sub get_taxonomy_id {
   my ($self) = @_;
   return $self->single_value_by_key('species.taxonomy_id', 1);
-}
-
-
-
-=head2 get_default_assembly
-
-  Description: DEPRECATED. Use the version of the coordinate system you are
-             interested in instead.
-
-  Example:     #use this instead
-               my ($highest_cs) = @{$db->get_CoordSystemAdaptor->fetch_all()};
-               my $assembly = $highest_cs->version();
-
-=cut
-
-sub get_default_assembly {
-  my $self = shift;
-
-  deprecate("Use version of coordinate system you are interested in instead.\n".
-            "Example:\n".
-            '  ($cs) = @{$coord_system_adaptor->fetch_all()};'."\n" .
-            '  $assembly = $cs->version();');
-
-  my ($cs) = @{$self->db->get_CoordSystemAdaptor->fetch_all()};
-
-  return $cs->version();
-}
-
-
-#
-# TBD This method should be removed/deprecated
-#
-sub get_max_assembly_contig {
-  my $self = shift;
-  deprecate('This method should either be fixed or removed');
-  return $self->single_value_by_key('assembly.maxcontig');
 }
 
 =head2 get_genebuild

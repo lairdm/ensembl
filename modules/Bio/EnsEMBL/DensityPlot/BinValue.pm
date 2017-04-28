@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,9 +48,7 @@ use strict;
 
 # Object preamble - inheriets from Bio::Root::Object
 
-use Bio::EnsEMBL::Root;
-
-@ISA = qw(Bio::EnsEMBL::Root Exporter);
+@ISA = qw(Exporter);
 #@EXPORT_OK = qw();
 # new() is inherited from Bio::Root::Object
 

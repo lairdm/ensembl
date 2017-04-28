@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,13 +44,29 @@ sub run_script {
   my $mrna_source_id = $self->get_source_id_for_source_name('RefSeq_mRNA', 'otherfeatures');
   my $ncrna_source_id = $self->get_source_id_for_source_name('RefSeq_ncRNA', 'otherfeatures');
 
+  my $pred_peptide_source_id =
+    $self->get_source_id_for_source_name('RefSeq_peptide_predicted', 'otherfeatures');
+  my $pred_mrna_source_id =
+    $self->get_source_id_for_source_name('RefSeq_mRNA_predicted','otherfeatures');
+  my $pred_ncrna_source_id =
+    $self->get_source_id_for_source_name('RefSeq_ncRNA_predicted', 'otherfeatures');
+
+  if($verbose){
+    print "RefSeq_peptide source ID = $peptide_source_id\n";
+    print "RefSeq_mRNA source ID = $mrna_source_id\n";
+    print "RefSeq_ncRNA source ID = $ncrna_source_id\n";
+    print "RefSeq_peptide_predicted source ID = $pred_peptide_source_id\n";
+    print "RefSeq_mRNA_predicted source ID = $pred_mrna_source_id\n" ;
+    print "RefSeq_ncRNA_predicted source ID = $pred_ncrna_source_id\n" ;
+  }
+
   my $user = "ensro";
   my $host;
   my $port = 3306;
   my $dbname;
   my $pass;
-  my $transcript_score_threshold = 0.90;
-  my $tl_transcript_score_threshold = 0.90;
+  my $transcript_score_threshold = 0.75;
+  my $tl_transcript_score_threshold = 0.75;
   my $project;
 
 # Grep the project name, should be ensembl or ensemblgenomes
@@ -114,6 +131,7 @@ sub run_script {
               '-user'     => $user,
               '-pass'     => $pass,
               '-dbname'   => $dbname,
+              '-port'     => $port,
               '-species'  => $species_name.$host,
               '-group'    => 'core',
        );
@@ -121,12 +139,9 @@ sub run_script {
 # Else, database should be on staging
       $registry->load_registry_from_multiple_dbs(
           {
-              -host    => 'ens-staging1',
+              -host    => 'mysql-ens-sta-1',
+	      '-port'    => 4519,
               -user    => 'ensro',
-          },
-          {
-              -host     => 'ens-staging2',
-              -user     => 'ensro',
           },
        );
       $core_dba = $registry->get_DBAdaptor($species_name,'core');
@@ -137,23 +152,23 @@ sub run_script {
               '-host'     => $ofhost,
               '-user'     => $ofuser,
               '-pass'     => $ofpass,
+              '-port'     => $ofport,
               '-dbname'   => $ofdbname,
-              '-species'  => $species_name.$ofhost,
+              '-species'  => $species_name,
               '-group'    => 'otherfeatures',
        );
+       $otherf_dba->dnadb($core_dba);
       } else {
 # Else database should be on staging
       $registry->load_registry_from_multiple_dbs( 
 	  {
-	      -host    => 'ens-staging1',
+	      -host    => 'mysql-ensembl-mirror.ebi.ac.uk',
+	      '-port'    => 4240,
 	      -user    => 'ensro',
-	  },
-	  {
-	      -host     => 'ens-staging2',
-	      -user     => 'ensro',
 	  },
        );
       $otherf_dba = $registry->get_DBAdaptor($species_name, 'otherfeatures') if !defined($ofhost);
+      if (defined $otherf_dba) { $otherf_dba->dnadb($core_dba); }
     }
       
 
@@ -211,11 +226,11 @@ sub run_script {
 
 # Create a range registry for all the exons of the refseq transcript
       foreach my $transcript_of (sort { $a->start() <=> $b->start() } @$transcripts_of) {
+        if ($transcript_of->stable_id =~ /H3.X/ || $transcript_of->stable_id =~ /H3.Y/ || $transcript_of->stable_id =~ /^3.8/) { next; }
         my %transcript_result;
         my %tl_transcript_result;
         my $id = $transcript_of->stable_id();
         if (!defined $id) { next; }
-        if ($id =~ /^XM_/) { next; }
         my $exons_of = $transcript_of->get_all_Exons();
         my $rr1 = Bio::EnsEMBL::Mapper::RangeRegistry->new();
         my $tl_exons_of = $transcript_of->get_all_translateable_Exons();
@@ -289,6 +304,9 @@ sub run_script {
           if ($transcript->biotype eq $transcript_of->biotype) {
             $transcript_result{$transcript->stable_id} = $score;
             $tl_transcript_result{$transcript->stable_id} = $tl_score;
+          } else {
+            $transcript_result{$transcript->stable_id} = $score * 0.90;
+            $tl_transcript_result{$transcript->stable_id} = $tl_score * 0.90;
           }
         }
 
@@ -313,6 +331,9 @@ sub run_script {
                   $best_score = $score;
                 }
               }
+            } elsif ($score >= $best_score) {
+              $best_id = $tid;
+              $best_score = $score;
             }
           }
         }
@@ -320,8 +341,11 @@ sub run_script {
 # If a best match was defined for the refseq transcript, store it as direct xref for ensembl transcript
         if ($best_id) {
           my ($acc, $version) = split(/\./, $id);
+	  $version =~ s/\D//g if $version;
           my $source_id = $mrna_source_id;
           $source_id = $ncrna_source_id if $acc =~ /^NR_/;
+          $source_id = $pred_mrna_source_id if $acc =~ /^XM_/;
+          $source_id = $pred_ncrna_source_id if $acc =~ /^XR_/;
           my $xref_id = $self->add_xref({ acc => $acc,
                                           version => $version,
                                           label => $id,
@@ -341,11 +365,13 @@ sub run_script {
           if (defined $tl && defined $tl_of) {
             if ($tl_of->seq eq $tl->seq) {
               ($acc, $version) = split(/\./, $tl_of->stable_id());
+              $source_id = $peptide_source_id;
+              $source_id = $pred_peptide_source_id if $acc =~ /^XP_/;
               my $tl_xref_id = $self->add_xref({ acc => $acc,
                                               version => $version,
                                               label => $acc,
                                               desc => '',
-                                              source_id => $peptide_source_id,
+                                              source_id => $source_id,
                                               species_id => $species_id,
                                               info_type => 'DIRECT' });
               $self->add_direct_xref($tl_xref_id, $tl->stable_id(), "Translation", "");

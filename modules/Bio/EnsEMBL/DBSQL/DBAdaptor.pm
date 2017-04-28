@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -1106,133 +1107,6 @@ sub revert_adaptor {
   my $deleted_adaptor = $REGISTRY->remove_switchable_adaptor($self->species, $self->group, $adaptor_name);
   delete $self->{last_switch};
   return $deleted_adaptor;
-}
-
-#########################
-# sub DEPRECATED METHODS
-#########################
-=head2 db
-  
-  Description: DEPRECATED 
-  
-=cut
-
-sub db{
-  my ($self, $arg ) = @_;
- deprecate("db Should no longer be called from the DBAdaptor. DBConnection should now be used OR preferably the object adaptor itself\n");
- return $self->dbc($arg);
-}
-
-
-sub source { deprecate('Do not use - this method does nothing'); }
-
-
-=head2 assembly_type
-
-  Description: DEPRECATED - Use CoordSystemAdaptor to obtain default coordinate
-               system instead.
-
-=cut
-
-sub assembly_type{
-  my $self = shift;
-
-  deprecate('Use CoordSystemAdaptor $csa->fetch_all->[0]->version() instead');
-
-  my $csa = $self->get_CoordSystemAdaptor();
-  my ($cs) = @{$csa->fetch_all()};
-  return ($cs) ? $cs->version() : undef;
-}
-
-
-
-=head2 list_supported_assemblies
-
-  Description: DEPRECATED - Use CoordSystemAdaptor to obtain list of top-level
-               coordinate systems instead
-
-=cut
-
-sub list_supported_assemblies {
-  my($self) = @_;
-  deprecate('Use CoordSystemAdaptor::fetch_all instead');
-
-  my $csa = $self->get_CoordSystemAdaptor();
-  my %versions;
-  foreach my $cs (@{$csa->fetch_all()}) {
-    $versions{$cs->version()} = 1;
-  }
-
-  return keys %versions;
-}
-
-
-sub prepare{
-  my ($self, @args) = @_;
-
- deprecate("prepare Should no longer be called from the DBAdaptor. DBConnection should now be used OR preferably the object adaptor itself\n");
-  $self->dbc->prepare(@args);
-}
-
-sub dbname{
-  my ($self, @args) = @_;
-
- deprecate("dbname Should no longer be called from the DBAdaptor. DBConnection should now be used OR preferably the object adaptor itself\n");
-  $self->dbc->dbname(@args);
-} 
-
-sub disconnect_when_inactive{
-  my ($self, @args) = @_;
-
- deprecate("disconnect_when_inactive Should no longer be called from the DBAdaptor. DBConnection should now be used OR preferably the object adaptor itself\n");
-  $self->dbc->disconnect_when_inactive(@args);
-}
-
-sub reconnect_when_lost{
-  my ($self, @args) = @_;
-
- deprecate("reconnect_when_lost Should no longer be called from the DBAdaptor. DBConnection should now be used OR preferably the object adaptor itself\n");
-  $self->dbc->reconnect_when_lost(@args);
-}
-
-
-sub host{
-  my ($self, @args) = @_;
-
- deprecate("host Should no longer be called from the DBAdaptor. DBConnection should now be used OR preferably the object adaptor itself\n");
-  $self->dbc->host(@args);
-}
-sub username{
-  my ($self, @args) = @_;
-
- deprecate("username Should no longer be called from the DBAdaptor. DBConnection should now be used OR preferably the object adaptor itself\n");
-  $self->dbc->username(@args);
-}
-sub password{
-  my ($self, @args) = @_;
-
- deprecate("password Should no longer be called from the DBAdaptor. DBConnection should now be used OR preferably the object adaptor itself\n");
-  $self->dbc->password(@args);
-}
-sub driver{
-  my ($self, @args) = @_;
-
- deprecate("driver Should no longer be called from the DBAdaptor. DBConnection should now be used OR preferably the object adaptor itself\n");
-  $self->dbc->driver(@args);
-}
-sub port{
-  my ($self, @args) = @_;
-
- deprecate("port Should no longer be called from the DBAdaptor. DBConnection should now be used OR preferably the object adaptor itself\n");
-  $self->dbc->port(@args);
-}
-
-sub db_handle{
-  my ($self, @args) = @_;
-
-
- deprecate("db_handle Should no longer be called from the DBAdaptor. DBConnection should now be used OR preferably the object adaptor itself\n");
-  $self->dbc->db_handle(@args);
 }
 
 

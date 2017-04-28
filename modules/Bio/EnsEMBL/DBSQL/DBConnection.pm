@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -70,7 +71,6 @@ package Bio::EnsEMBL::DBSQL::DBConnection;
 use vars qw(@ISA);
 use strict;
 
-use Bio::EnsEMBL::Root;
 use DBI;
 
 use Bio::EnsEMBL::DBSQL::StatementHandle;
@@ -79,8 +79,6 @@ use Bio::EnsEMBL::Utils::Exception qw/deprecate throw info warning/;
 use Bio::EnsEMBL::Utils::Argument qw/rearrange/;
 use Bio::EnsEMBL::Utils::Scalar qw/assert_ref wrap_array/;
 use Bio::EnsEMBL::Utils::SqlHelper;
-
-@ISA = qw(Bio::EnsEMBL::Root); # for backwards compatibility
 
 =head2 new
 
@@ -167,7 +165,7 @@ sub new {
   $self->driver($driver);
 
   my $driver_class = 'Bio::EnsEMBL::DBSQL::Driver::' . $driver;
-  eval "require $driver_class";
+  eval "require $driver_class"; ## no critic
   throw("Cannot load '$driver_class': $@") if $@;
   my $driver_object = $driver_class->new($self);
   $self->_driver_object($driver_object);
@@ -1022,7 +1020,7 @@ sub from_seconds_to_date {
     if ($seconds) {
         return $self->_driver_object->from_seconds_to_date($seconds);
     }
-    return '"0000-00-00 00:00:00"'; # should this use DBI's quote() ?
+    return;
 }
 
 =head2 sql_helper
@@ -1072,40 +1070,6 @@ sub to_hash {
   $hash->{'-DBNAME'} = $self->dbname() if defined $self->dbname();
   $hash->{'-PASS'} = $self->password() if defined $self->password();
   return $hash;
-}
-
-####
-#deprecated functions
-####
-
-=head2 group
-
-   group is no longer available in DBConnection and should be accessed if needed
-   from an adaptor.
-
-=cut
-
-sub group {
-  my ($self, $arg ) = @_;
-  ( defined $arg ) &&
-    ( $self->{_group} = $arg );
-  deprecate "group should not be called from DBConnection but from an adaptor\n";
-  return $self->{_group};
-}
-
-=head2 species
-
-   species is no longer available in DBConnection and should be accessed if needed
-   from an adaptor.
-
-=cut
-
-sub species {
-  my ($self, $arg ) = @_;
-  ( defined $arg ) &&
-    ( $self->{_species} = $arg );
-  deprecate "species should not be called from DBConnection but from an adaptor\n";
-  return $self->{_species};
 }
 
 =head2 _driver_object

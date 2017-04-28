@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -112,7 +113,7 @@ sub new {
   }
 
   # Create a cdna <-> genomic mapper and load it with exon coords
-  my $mapper = _load_mapper($transcript,$start_phase);
+  my $mapper = _load_mapper($transcript);
 
   my $self = bless({'exon_coord_mapper' => $mapper,
                     'start_phase'       => $start_phase,
@@ -137,7 +138,6 @@ sub new {
 
 sub _load_mapper {
   my $transcript = shift;
-  my $start_phase = shift;
 
   my $mapper = Bio::EnsEMBL::Mapper->new( 'cdna', 'genomic');
 
@@ -157,8 +157,8 @@ sub _load_mapper {
 
 
   foreach my $ex (@{$transcript->get_all_Exons}) {
-    my $gen_start = $ex->start();
-    my $gen_end   = $ex->end();
+    my $gen_start = $ex->seq_region_start();
+    my $gen_end   = $ex->seq_region_end();
 
     $cdna_start = $cdna_end + 1;
     $cdna_end   = $cdna_start + $ex->length() - 1;
@@ -206,10 +206,15 @@ sub _load_mapper {
 
           $cdna_end  += $len_diff;
 
-          if($strand == 1) {
-            $gen_start  -= $len_diff;
-          } else {
-            $gen_end    += $len_diff;
+          if($len_diff > 0) {
+            $cdna_start += $len_diff;
+          }
+          else {
+            if($strand == 1) {
+              $gen_start  -= $len_diff;
+            } else {
+              $gen_end    += $len_diff;
+            }
           }
 
           $edit_shift += $len_diff;
@@ -248,15 +253,16 @@ sub _load_mapper {
 
 
 sub cdna2genomic {
-  my ($self,$start,$end) = @_;
+  my ($self, $start, $end, $include_original_region, $cdna_coding_start) = @_;
 
   if( !defined $end ) {
     throw("Must call with start/end");
   }
 
+  $cdna_coding_start = defined $cdna_coding_start ? $cdna_coding_start : 1;
   my $mapper = $self->{'exon_coord_mapper'};
 
-  return  $mapper->map_coordinates( 'cdna', $start, $end, 1, "cdna" );
+  return  $mapper->map_coordinates('cdna', $start, $end, 1, "cdna", $include_original_region, $cdna_coding_start);
 
 }
 
@@ -305,6 +311,8 @@ sub genomic2cdna {
                start position in cds coords
   Arg [2]    : int $end
                end position in cds coords
+  Arg [3]      boolean (0 or 1) $include_original_region
+               option to include original input coordinate region mappings in the result
   Example    : @genomic_coords = $transcript_mapper->cds2genomic(69, 306);
   Description: Converts cds coordinates into genomic coordinates.  The
                coordinates returned are relative to the same slice that the
@@ -318,7 +326,7 @@ sub genomic2cdna {
 =cut
 
 sub cds2genomic {
-  my ( $self, $start, $end ) = @_;
+  my ( $self, $start, $end, $include_original_region ) = @_;
 
   if ( !( defined($start) && defined($end) ) ) {
     throw("Must call with start and end");
@@ -327,8 +335,18 @@ sub cds2genomic {
   # Move start end into translate cDNA coordinates now.
   $start = $start +( $self->{'cdna_coding_start'} - 1 ) ;
   $end = $end + ( $self->{'cdna_coding_start'} - 1 );
-
-  return $self->cdna2genomic( $start, $end );
+  
+  #Check if the start exceeds the cdna_coding_end, if yes, return
+  if($start > $self->{'cdna_coding_end'}){
+  	return undef;
+  }
+  
+  #Check if the end exceeds the cdna_coding_end, if yes, truncate it otherwise we will be including gaps
+  if($end > $self->{'cdna_coding_end'}){
+  	$end = $self->{'cdna_coding_end'};
+  }
+    
+  return $self->cdna2genomic( $start, $end, $include_original_region, $self->{'cdna_coding_start'} );
 }
 
 =head2 pep2genomic

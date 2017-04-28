@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -81,18 +82,16 @@ sub run_script {
          '-user'     => $user,
          '-pass'     => $pass,
          '-dbname'   => $dbname,
+         '-port'     => $port,
          '-species'  => $species_name,
          '-group'    => 'core',
        );
   } else {
       $registry->load_registry_from_multiple_dbs( 
       {
-        '-host'    => 'ens-staging1',
+        '-host'    => 'mysql-ens-sta-1',
+	'-port'    => 4519,
         '-user'    => 'ensro',
-      },
-      {
-        '-host'     => 'ens-staging2',
-        '-user'     => 'ensro',
       },
       );
       $dba = $registry->get_DBAdaptor($species_name, 'core');
@@ -128,7 +127,7 @@ sub run_script {
     warn($response->status_line);
     return 1;
   }
-  my @lines = split(/\n\n/, $response->decoded_content);
+  my @lines = split(/\n\n\n/, $response->decoded_content);
 
   my @xrefs;
   my $xref_count = 0;

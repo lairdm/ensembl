@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -143,7 +144,10 @@ sub print_feature {
 
 #    Column 4 - start, the start coordinate of the feature, here shifted to chromosomal coordinates
 #    Start and end must be in ascending order for GFF. Circular genomes require the length of 
-#   the circuit to be added on.
+#    the circuit to be added on.
+        if (!defined $summary{'start'} || !defined $summary{'end'}) {
+          throw sprintf "Coordinates not defined for %s.\n", $summary{id};
+        }
         if ($summary{'start'} > $summary{'end'}) {
             #assumes this is not a Compara circular sequence and can treat is as a Feature
             if ($feature->slice() && $feature->slice()->is_circular() ) {
@@ -206,6 +210,13 @@ sub print_feature {
                     $value = 'gene:' . $value;
                   } elsif ($feature->isa('Bio::EnsEMBL::Exon')) {
                     $key = 'Name';
+                  } elsif ($feature->isa('Bio::EnsEMBL::CDS')) {
+                    my $trans_spliced = $feature->transcript->get_all_Attributes('trans_spliced');
+                    if (scalar(@$trans_spliced)) {
+                      $value = $so_term . ':' . join('_', $value, $feature->seq_region_name, $feature->seq_region_strand);
+                    } else {
+                      $value = $so_term . ':' . $value;
+                    }
                   } else {
                     $value = $so_term . ':' . $value;
                   }
@@ -231,9 +242,11 @@ sub print_feature {
         #$row =~ s/;?$// if $row =~ /;$/; # Remove trailing ';' if there is any
         while(my $attribute = shift @keys) {
             my $data_written = 0;
-            if (ref $summary{$attribute} eq "ARRAY" && scalar(@{$summary{$attribute}}) > 0) {
-                $row .= $attribute."=".join (',',map { uri_escape($_,'\t\n\r;=%&,') } grep { defined $_ } @{$summary{$attribute}});
-                $data_written = 1;
+            if (ref $summary{$attribute} eq "ARRAY") {
+		if (scalar(@{$summary{$attribute}}) > 0) {
+		    $row .= $attribute."=".join (',',map { uri_escape($_,'\t\n\r;=%&,') } grep { defined $_ } @{$summary{$attribute}});
+		    $data_written = 1;
+		}
             }
             else {
                 if (defined $summary{$attribute}) { 

@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -250,34 +251,6 @@ sub fetch_all_by_chr_band {
 
   my $constraint = "k.band like '$band%'";
   return $self->fetch_all_by_Slice_constraint($slice,$constraint);
-}
-
-
-=head2 fetch_by_chr_band
-
-  Arg  [1]   : string $chr_name
-               Name of the chromosome from which to retrieve the band
-  Arg  [2]   : string $band
-               The name of the band to retrieve from the specified chromosome
-  Example    : @bands = @{$kary_adaptor->fetch_all_by_chr_band('4', 'q23')};
-  Description: Fetches the karyotype band object from the database
-               for the given chromosome and band name.  If no such band
-               exists, undef is returned instead.  This function uses fuzzy
-               matching of the band name. For example the bands 'q23.1' and
-               'q23.4' could be matched by fetch_all_by_chr_band('20', 'q23');
-  Returntype : Bio::EnsEMBL::KaryotypeBand in chromosomal coordinates.
-  Exceptions : throws if chr or band is missing in arguments
-  Caller     : general
-  Status     : Stable
-
-=cut
-
-sub fetch_by_chr_band {
-  my $self = shift;
-  deprecate('Use fetch_all_by_chr_band instead.');
-
-  my ($band) = @{$self->fetch_all_by_chr_band(@_)};
-  return $band;
 }
 
 

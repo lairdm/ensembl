@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,6 +49,7 @@ sub gene_description_sources {
           "TRNASCAN_SE",
 	  "miRBase",
           "HGNC",
+          "VGNC",
           "IMGT/GENE_DB",
 	  "Uniprot/SWISSPROT",
 	  "RefSeq_peptide",
@@ -81,7 +83,8 @@ sub transcript_display_xref_sources {
 sub gene_display_xref_sources {
   my $self     = shift;
 	
-  my @list = qw(RFAM
+  my @list = qw(VGNC
+                RFAM
                 miRBase
                 Uniprot_gn
                 EntrezGene);
@@ -102,7 +105,8 @@ SELECT DISTINCT ox.object_xref_id
           xdep.source_id = sdep.source_id AND
           smas.name like "Refseq%predicted" AND
           sdep.name like "EntrezGene" AND
-          ox.ox_status = "DUMP_OUT" 	 
+          ox.ox_status = "DUMP_OUT" AND
+          ox.master_xref_id = dx.master_xref_id 
 IEG
 
   #don't use labels starting with LOC
@@ -307,6 +311,16 @@ sub set_display_xrefs_from_stable_table{
       }
     }
   }	
+
+  #
+  # Clean up synonyms linked to xrefs which are not the display xref
+  # Synonyms are only used as alternative gene names, so should be synonyms of the gene symbol chosen
+  #
+
+  my $syn_clean_sth = $self->core->dbc->prepare("DELETE es FROM external_synonym es, xref x LEFT JOIN gene g ON g.display_xref_id = x.xref_id WHERE es.xref_id = x.xref_id AND isnull(g.display_xref_id)");
+  $syn_clean_sth->execute();
+  $syn_clean_sth->finish();
+
 }
 
 
@@ -714,6 +728,15 @@ DXS
   $reset_status_sth->execute();
   $reset_status_sth->finish;
 
+  #
+  # Clean up synonyms linked to xrefs which are not the display xref
+  # Synonyms are only used as alternative gene names, so should be synonyms of the gene symbol chosen
+  #
+
+  my $syn_clean_sth = $self->core->dbc->prepare("DELETE es FROM external_synonym es, xref x LEFT JOIN gene g ON g.display_xref_id = x.xref_id WHERE es.xref_id = x.xref_id AND isnull(g.display_xref_id)");
+  $syn_clean_sth->execute();
+  $syn_clean_sth->finish();
+
 
 }
 
@@ -1007,12 +1030,12 @@ DXS
     next if(exists($ignore{$gene_id}) || exists($gene_desc_updated{$gene_id}));
     
     if(defined($desc) ){
-      my $filtered_description = $self->filter_by_regexp($desc, \@regexps);
-      if ($filtered_description ne "") {
+      my $filtered_desc = $self->filter_by_regexp($desc, \@regexps);
+      if ($filtered_desc ne "") {
 	if(!defined($no_source_name_in_desc{$source_id})){
-	  $desc .= " [Source:".$source_id_to_external_name{$source_id}.";Acc:".$label."]";
+	  $filtered_desc .= " [Source:".$source_id_to_external_name{$source_id}.";Acc:".$label."]";
 	}
-	$update_gene_desc_sth->execute($desc,$gene_id);
+	$update_gene_desc_sth->execute($filtered_desc,$gene_id);
 	$gene_desc_updated{$gene_id} = 1;
       }
     }

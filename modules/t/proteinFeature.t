@@ -1,4 +1,5 @@
 # Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+# Copyright [2016-2017] EMBL-European Bioinformatics Institute
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +17,7 @@ use strict;
 use warnings;
 
 use Test::More;
+use Test::Warnings;
 use Bio::EnsEMBL::Test::TestUtils;
 
 use Bio::EnsEMBL::ProteinFeature;
@@ -43,6 +45,7 @@ my $hdes = "Hit description";
 my $idesc = 'interpro description';
 my $ilabel = 'interpro label';
 my $interpro_ac = 'interpro accession';
+my $translation_id = 1234;
 
 my $analysis = Bio::EnsEMBL::Analysis->new(-LOGIC_NAME => 'test');
 
@@ -62,7 +65,8 @@ my $f = Bio::EnsEMBL::ProteinFeature->new
    -HDESCRIPTION=> $hdes,
    -IDESC       => $idesc,
    -ILABEL      => $ilabel,
-   -INTERPRO_AC => $interpro_ac);
+   -INTERPRO_AC => $interpro_ac,
+   -TRANSLATION_ID     => $translation_id);
 
 
 
@@ -71,6 +75,7 @@ ok($f && $f->isa('Bio::EnsEMBL::ProteinFeature'));
 ok($f->start == $start);
 ok($f->end == $end);
 ok($f->analysis == $analysis);
+ok($f->translation_id == $translation_id);
 
 ok($f->hstart == $hstart);
 ok($f->hend   == $hend);

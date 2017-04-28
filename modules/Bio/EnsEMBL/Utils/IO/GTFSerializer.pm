@@ -2,6 +2,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -318,18 +319,18 @@ sub print_feature {
 
       my $exon_start = $cdsexon->start;
       my $exon_end   = $cdsexon->end;
-      if ( $translation &&
-           $hasend &&
-           ( $exon->end >= $endcodons[0]->start &&
-             $exon->start <= $endcodons[0]->end ) )
-      {
-        # Only the first stop-codon feature is used to adjust the end of the exon
-        # This may not be sufficient all the time
-        if ( $cdsexon->strand == 1 ) {
-          $exon_end = $cdsexon->end - $endcodons[0]->length;
-        }
-        else {
-          $exon_start = $cdsexon->start + $endcodons[0]->length;
+      foreach my $endcodon (@endcodons) {
+        if ( $translation &&
+             $hasend &&
+             ( $exon->end >= $endcodon->start &&
+               $exon->start <= $endcodon->end ) )
+        {
+          if ( $cdsexon->strand == 1 ) {
+            $exon_end = $cdsexon->end - $endcodon->length;
+          }
+          else {
+            $exon_start = $cdsexon->start + $endcodon->length;
+          }
         }
       }
 
@@ -361,8 +362,8 @@ sub print_feature {
       foreach my $startc (@startcodons) {
         # here we should check the start codon covers 3 bases
         print $fh $idstr . "\t" . $transcript->source . "\t" .
-          'start_codon' . "\t" . ( $startc->start + $sliceoffset ) .
-          "\t" . ( $startc->end + $sliceoffset ) .
+          'start_codon' . "\t" . ( $startc->start ) .
+          "\t" . ( $startc->end ) .
           "\t" . "." . "\t" . $strand . "\t" . $startc->phase . "\t";
 
         $self->_print_attribs( $gene, $biotype_display, $transcript, $transcript_biotype,
@@ -377,8 +378,8 @@ sub print_feature {
         foreach my $endc (@endcodons) {
           # here we should check the stop codon covers 3 bases
           print $fh $idstr . "\t" . $transcript->source . "\t" .
-            'stop_codon' . "\t" . ( $endc->start + $sliceoffset ) .
-            "\t" . ( $endc->end + $sliceoffset ) .
+            'stop_codon' . "\t" . ( $endc->start ) .
+            "\t" . ( $endc->end ) .
             "\t" . "." . "\t" . $strand . "\t" . $endc->phase . "\t";
 
           $self->_print_attribs( $gene, $biotype_display, $transcript, $transcript_biotype,
@@ -405,7 +406,7 @@ sub print_feature {
   foreach my $utr (@{$utrs}) {
     my $strand = $strand_conversion{$utr->strand()};
     print $fh sprintf(qq{%s\t%s\t%s\t%d\t%d\t.\t%s\t.\t}, 
-        $idstr, $transcript->source, $utr->type, ($utr->start()+$sliceoffset), ($utr->end+$sliceoffset), $strand);
+        $idstr, $transcript->source, $utr->type, ($utr->seq_region_start()), ($utr->seq_region_end()), $strand);
     $self->_print_attribs($gene, $biotype_display, $transcript, $transcript_biotype, 0, 'UTR', undef, undef, $has_selenocysteine);
     print $fh "\n";
   }
@@ -455,6 +456,13 @@ sub _print_attribs {
     print $fh " havana_gene \"" . $gene->havana_gene->display_id() . "\";";
     print $fh " havana_gene_version \"" . $gene->havana_gene->version() . "\";";
   }
+
+  #add projection parent
+  my $proj_parent_attributes = $gene->get_all_Attributes("proj_parent_g");
+    if (@{$proj_parent_attributes}) {
+      my $value = $proj_parent_attributes->[0]->value;
+      print $fh qq{ projection_parent_gene "${value}";};
+    }
 
   if($type ne 'gene') {
     print $fh " transcript_name \"" . $trans_name . "\";"
@@ -507,6 +515,11 @@ sub _print_attribs {
       my $value = $attributes->[0]->value;
       $value =~ s/tsl//;
       print $fh qq{ transcript_support_level "${value}";};
+    }
+    my $proj_parent_attributes = $transcript->get_all_Attributes("proj_parent_t");
+    if (@{$proj_parent_attributes}) {
+      my $value = $proj_parent_attributes->[0]->value;
+      print $fh qq{ projection_parent_transcript "${value}";};
     }
   }
 

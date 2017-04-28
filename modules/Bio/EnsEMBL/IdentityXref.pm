@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -106,7 +107,7 @@ sub new {
     $self->{'evalue'} = $evalue;
     $self->{'cigar_line'} = $cigar_line;
     $self->{'xref_start'} = $query_start || $xref_start;
-    $self->{'xref_end'} = $query_end || $xref_start;
+    $self->{'xref_end'} = $query_end || $xref_end;
     $self->{'ensembl_start'} = $translation_start || $ensembl_start;
     $self->{'ensembl_end'} = $translation_end || $ensembl_end;
     $self->{'analysis'} = $analysis;
@@ -437,94 +438,6 @@ sub map_feature {
                                          "external" );
 
   return @coords;
-}
-
-
-###########################
-# DEPRECATED METHODS FOLLOW
-###########################
-
-=head2 query_identity
-
-  Description: DEPRECATED. Use xref_identity() instead.
-  Status     : At Risk
-
-=cut
-
-sub query_identity{
-  deprecate("Use xref_identity instead");
-  xref_identity(@_);
-}
-
-
-=head2 target_identity
-
-  Description: DEPRECATED. Use ensembl_identity() instead.
-  Status     : At Risk
-
-=cut
-
-sub target_identity{
-  deprecate("Use ensembl_identity instead");
-  ensembl_identity(@_);
-}
-
-
-
-=head2 translation_start
-
-  Description: DEPRECATED. Use ensembl_start() instead.
-  Status     : At Risk
-
-=cut
-
-sub translation_start {
-  deprecate("Use ensembl_start instead");
-  ensembl_start(@_);
-
-}
-
-
-=head2 translation_end
-
-  Description: DEPRECATED. Use ensembl_end() instead.
-  Status     : At Risk
-
-=cut
-
-sub translation_end {
-  deprecate("Use ensembl_end instead");
-  ensembl_end(@_);
-}
-
-
-
-=head2 query_start
-
-  Description: DEPRECATED. Use xref_start() instead.
-  Status     : At Risk
-
-=cut
-
-sub query_start {
-  deprecate("Use xref_start instead");
-  xref_start(@_);
-
-}
-
-
-
-=head2 query_end
-
-  Description: DEPRECATED. Use xref_end() instead.
-  Status     : At Risk
-
-=cut
-
-sub query_end {
-  deprecate("Use xref_end instead");
-  xref_end(@_);
-
 }
 
 

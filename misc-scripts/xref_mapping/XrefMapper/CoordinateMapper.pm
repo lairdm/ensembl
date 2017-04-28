@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -679,7 +680,7 @@ sub dump_xref {
                 $version,
                 '\N',
                 'COORDINATE_OVERLAP',
-                '\N'                                  # FIXME (possibly)
+                ''                                  # FIXME (possibly)
     );
   }
   $fh->close();
@@ -707,12 +708,13 @@ sub dump_object_xref {
       # Assign 'object_xref_id' to this Object Xref.
       $object_xref->{'object_xref_id'} = ++$object_xref_id;
 
-      $fh->printf( "%d\t%d\t%s\t%d\t%s\n",
+      $fh->printf( "%d\t%d\t%s\t%d\t%s\t%s\n",
                    $object_xref->{'object_xref_id'},
                    $object_xref->{'ensembl_id'},
                    $object_xref->{'ensembl_object_type'},
                    $xref->{'xref_id'},
-                   '\N' );
+                   '\N',
+                   '0' );
     }
   }
   $fh->close();

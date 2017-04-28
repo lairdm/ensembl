@@ -1,4 +1,5 @@
 # Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+# Copyright [2016-2017] EMBL-European Bioinformatics Institute
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +17,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Test::Warnings;
+use Test::Warnings qw(warning);
 use Test::Exception;
 use Data::Dumper;
 use Bio::EnsEMBL::Registry;
@@ -61,6 +62,10 @@ ok(@{$ids});
 debug("Gene->list_stable_ids");
 my $stable_ids = $ga->list_stable_ids();
 ok(@{$stable_ids});
+
+debug("Gene->list_seq_region_ids");
+my $region_ids = $ga->list_seq_region_ids();
+ok(@{$region_ids});
 
 $gene = $ga->fetch_by_display_label("T9S4_HUMAN");
 ok($gene && $gene->dbID() == 18262);
@@ -280,6 +285,13 @@ foreach my $tr (@{$gene->get_all_Transcripts()}) {
 ok($count == 5);
 ok($translates);
 
+# Verify Transcript cache is not leaky
+my $transcripts = $gene->get_all_Transcripts;
+$count = @$transcripts;
+pop @$transcripts;
+$transcripts = $gene->get_all_Transcripts;
+cmp_ok(scalar @$transcripts, '==', $count, "Gene's transcript cache is not modified by changing transcript lists in caller code");
+
 ok(scalar(@{$gene->get_all_Exons()}) == 3);
 
 $gene = $gene->transform("chromosome");
@@ -299,6 +311,9 @@ debug("Storing the gene");
 $gene_ad->store($gene);
 
 ok(1);
+
+# Cache all mappings needed for genes
+$gene_ad->cache_gene_seq_mappings();
 
 my $genes = $slice->get_all_Genes();
 
@@ -383,17 +398,7 @@ $multi->restore();
 
 $slice = $db->get_SliceAdaptor()->fetch_by_region("chromosome", "20", 30_252_000, 31_252_001);
 
-my $known   = 0;
-my $unknown = 0;
-
 $genes = $slice->get_all_Genes();
-for my $gene (@$genes) {
-  if ($gene->is_known()) {
-	$known++;
-  } else {
-	$unknown++;
-  }
-}
 
 # try and count the genes on the slice
 note 'Processing counts';
@@ -405,6 +410,9 @@ $geneCount = $ga->count_all_by_Slice($slice, 'banana');
 is($geneCount, 0, 'Gene count on Chr 20 subset with bogus biotype');
 $geneCount = $ga->count_all_by_Slice($slice, ['banana', 'protein_coding']);
 is($geneCount, scalar(@$genes), 'Protein coding gene count matches array size on Chr20 subset');
+$geneCount = $ga->count_all_by_Slice($slice, 'protein_coding', 'ensembl');
+my $vega_geneCount = $ga->count_all_by_Slice($slice, 'protein_coding', 'vega');
+is($geneCount, scalar(@$genes) - $vega_geneCount, "Almost all genes are of source ensembl");
 
 # Time to do more complex counts involving slice projections
 {
@@ -415,9 +423,6 @@ is($geneCount, scalar(@$genes), 'Protein coding gene count matches array size on
   is($gene_count, 14, 'Counts should span slices when given patches/haps/pars');
 }
 
-debug("known: $known Unknown: $unknown\n");
-
-ok($known == 17);
 
 #save contents of gene table
 $multi->save('core', 'gene');
@@ -494,6 +499,9 @@ is(scalar(@genes), 13, "Found 13 genes with fetch_all_by_Slice_and_external_dbna
 is($genes[0]->stable_id(), 'ENSG00000131044', "First gene is ENSG00000131044");
 is($genes[1]->stable_id(), 'ENSG00000088356', "Second gene is ENSG00000088356");
 
+warning { @genes = @{ $ga->fetch_all_by_Slice_and_external_dbname_link($slice, undef, 0, "random") }; };
+is(scalar(@genes), 0, "No genes with db random");
+
 #
 # test GeneAdaptor::fetch_all_by_display_label
 #
@@ -504,7 +512,7 @@ is($genes[0]->stable_id(), 'ENSG00000131044', "First gene is ENSG00000131044");
 #
 # test GeneAdaptor::fetch_all_by_transcript_supporting_evidence
 #
-@genes = @{ $ga->fetch_all_by_transcript_supporting_evidence('Q9VZ97', 'protein_align_feature') };
+@genes = @{ $ga->fetch_all_by_transcript_supporting_evidence('Q9NUG5', 'protein_align_feature') };
 is(scalar(@genes), 0, "Found 0 genes with fetch_all_by_transcript_supporting_evidence");
 
 
@@ -513,14 +521,24 @@ is(scalar(@genes), 0, "Found 0 genes with fetch_all_by_transcript_supporting_evi
 #
 @genes = @{ $ga->fetch_all_by_exon_supporting_evidence('BF346221.1', 'dna_align_feature') };
 is(scalar(@genes), 1, "Found 1 genes with fetch_all_by_exon_supporting_evidence");
+my $aa = $db->get_AnalysisAdaptor();
+$analysis = $aa->fetch_by_logic_name('RepeatMask');
+@genes = @{ $ga->fetch_all_by_exon_supporting_evidence('BF346221.1', 'dna_align_feature', $analysis) };
+is(scalar(@genes), 0, "No genes for random analysis");
+
+#
+# test GeneAdaptor::fetch_all_by_logic_name
+#
+@genes = @{ $ga->fetch_all_by_logic_name('ensembl') };
+is(scalar(@genes), 21, "All genes of analysis ensembl");
 
 
 #
 # test GeneAdaptor::fetch_all_by_GOTerm
 #
-my $go_term = $go_adaptor->fetch_by_accession('GO:0070363');
+my $go_term = $go_adaptor->fetch_by_accession('GO:0003677');
 @genes = @{ $ga->fetch_all_by_GOTerm($go_term) };
-is(scalar(@genes), 0, "Found 0 genes with fetch_all_by_GOTerm");
+is(scalar(@genes), 2, "Found 2 genes with fetch_all_by_GOTerm");
 
 
 #
@@ -657,6 +675,7 @@ foreach my $stable_id (qw(ENSG00000174873 ENSG00000101367)){ #test both strands
 # test Gene: get_all_alt_alleles
 #
 
+is($gene->is_reference, 1, "If no alt allele, gene is reference");
 $gene = $ga->fetch_by_dbID(18256);
 my $alt_genes = $gene->get_all_alt_alleles();
 
@@ -822,6 +841,28 @@ $gene = $ga->fetch_by_stable_id('ENSG00000355555');
 debug("fetch_by_stable_id");
 ok($gene->dbID == 18275);
 
+$gene->stable_id_version('ENSG00000171455.4');
+is($gene->stable_id, 'ENSG00000171455', 'Stable id set with stable_id_version');
+is($gene->version, 4, 'Version set with stable_id_version');
+is($gene->stable_id_version, 'ENSG00000171455.4', 'Stable id and version from stable_id_version');
+
+$gene->stable_id_version('ENSG00000171456');
+is($gene->stable_id, 'ENSG00000171456', 'Stable id set with stable_id_version');
+is($gene->version, undef, 'Version undef from stable_id_version');
+is($gene->stable_id_version, 'ENSG00000171456', 'Stable id and no version from stable_id_version');
+
+$gene = $ga->fetch_by_stable_id("ENSG00000171456.1");
+ok($gene->stable_id eq 'ENSG00000171456', "Fetch by stable_id with version");
+
+$gene = $ga->fetch_by_stable_id_version("ENSG00000171456", 1);
+ok($gene->stable_id eq 'ENSG00000171456', "fetch_by_stable_id_version");
+
+$gene = $ga->fetch_by_stable_id("ENSG00000171456.1a");
+ok(! defined($gene), "Fetch by stable_id with bad version");
+
+$gene = $ga->fetch_by_stable_id_version("ENSG00000171456", '1a');
+ok(! defined($gene), "fetch_by_stable_id_version, with bad version");
+
 @genes = @{$ga->fetch_all_versions_by_stable_id('ENSG00000355555')};
 debug("fetch_all_versions_by_stable_id");
 ok(scalar(@genes) == 1);
@@ -837,6 +878,10 @@ ok($gene->dbID == 18275);
 $gene = $ga->fetch_by_translation_stable_id('ENSP00000355555');
 debug("fetch_by_translation_stable_id");
 ok($gene->dbID == 18275);
+
+$gene = $ga->fetch_by_translation_stable_id('random_ENSP00000355555');
+debug("fetch_by_translation_stable_id");
+is($gene, undef, "No gene for random translation id");
 
 $gene = $ga->fetch_by_exon_stable_id('ENSE00001109603');
 debug("fetch_by_exon_stable_id");
@@ -897,6 +942,11 @@ $ga->update($gene);
 $gene = $ga->fetch_by_stable_id('ENSG00000355555');
 ok($gene->is_current == 1);
 
+
+$ga->remove_by_Slice($slice);
+$geneCount = $ga->count_all_by_Slice($slice);
+is($geneCount, 0, "Genes have been removed");
+
 $multi->restore;
 
 SKIP: {
@@ -905,12 +955,52 @@ SKIP: {
   #test the get_species_and_object_type method from the Registry
   my $registry = 'Bio::EnsEMBL::Registry';
   my ( $species, $object_type, $db_type ) = $registry->get_species_and_object_type('ENSG00000355555');
-  ok( $species eq 'homo_sapiens' && $object_type eq 'Gene');
+  is( $species, 'homo_sapiens', 'Test the get_species_and_object_type method from the Registry, species');
+  is( $object_type, 'Gene', 'Test the get_species_and_object_type method from the Registry, object_type');
+
+  ( $species, $object_type, $db_type ) = $registry->get_species_and_object_type('ENSG00000355555.1');
+  is( $species, 'homo_sapiens', 'Test the get_species_and_object_type method from the Registry with version, species');
+  is( $object_type, 'Gene', 'Test the get_species_and_object_type method from the Registry with version, object_type');
+
+  ( $species, $object_type, $db_type ) = $registry->get_species_and_object_type('ENSG00000355555.2a');
+  ok( !defined($species), 'Test the get_species_and_object_type method from the Registry with wrong version, species');
+
 }
 
 # Testing compara dba retrieval
 {
   dies_ok { $gene->get_all_homologous_Genes(); } 'No Compara DBAdaptor has been configured. No way to retrieve data';
+}
+
+# Checking for External DB fetching by Ontology linkage type
+{
+  my $genes = $ga->fetch_all_by_ontology_linkage_type('GO', 'IDA');
+  is(scalar(@{$genes}), 9, 'Expect 9 genes linked to IDAs'); 
+  foreach my $gene (@{$genes}) {
+    my %linkage_types = 
+      map { $_, 1 }
+      map { @{$_->get_all_linkage_types()} }
+      @{$gene->get_all_DBLinks('GO')};
+    ok($linkage_types{'IDA'}, $gene->stable_id().' was linked to an IDA term. Searching through all the links until we find the IDA linkage');
+    
+    my %undef_linkage_types = 
+      map { $_, 1 }
+      map { @{$_->get_all_linkage_types()} }
+      grep { $_->can('get_all_linkage_types') } 
+      @{$gene->get_all_DBLinks(undef)};
+    ok($undef_linkage_types{'IDA'}, $gene->stable_id().' was linked to an IDA term found by using an undef external db. Searching through all the links until we find the IDA linkage');
+  }
+  
+}
+
+# Fetching by slice and an external DB
+{
+  $ga->clear_cache(); # have to clear the cache because otherwise it gets the wrong values back!
+  my $local_slice = $sa->fetch_by_region("chromosome", "20", 30_249_935, 31_254_640);
+  my $genes = $ga->fetch_all_by_Slice_and_external_dbname_link($local_slice, undef, undef, 'HUGO'); # yes HUGO. Not HGNC. Old data
+  is(scalar(@{$genes}), 13, 'Expect 13 genes with HUGO/HGNC links');
+  # assume this will be the display xref
+  is($_->display_xref()->dbname(), 'HUGO', $_->stable_id().' has a display HUGO') for @{$genes};
 }
 
 done_testing();

@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -1165,54 +1166,39 @@ sub _remap {
   return \@out;
 }
 
-
 #
-# Given a logic name and an existing constraint this will
-# add an analysis table constraint to the feature.  Note that if no
-# analysis_id exists in the columns of the primary table then no
-# constraint is added at all
+# get seq region boundary (start|end) for a feature
+# the method attempts to retrieve the boundary directly from the db
+# return undef if cannot determine the associated feature table
 #
-sub _logic_name_to_constraint {
-  my $self = shift;
-  my $constraint = shift;
-  my $logic_name = shift;
+sub _seq_region_boundary_from_db {
+  my ($self, $feature, $boundary) = @_;
 
-  return $constraint if(!$logic_name);
-
-  #make sure that an analysis_id exists in the primary table
-  my ($prim_tab) = $self->_tables();
-  my $prim_synonym = $prim_tab->[1];
-
-  my $found_analysis=0;
-  foreach my $col ($self->_columns) {
-    my ($syn,$col_name) = split(/\./,$col);
-    next if($syn ne $prim_synonym);
-    if($col_name eq 'analysis_id') {
-      $found_analysis = 1;
-      last;
-    }
+  if(!ref($feature) || !$feature->isa('Bio::EnsEMBL::Feature')) {
+    throw('Expected Feature argument.');
   }
 
-  if(!$found_analysis) {
-    warning("This feature is not associated with an analysis.\n" .
-            "Ignoring logic_name argument = [$logic_name].\n");
-    return $constraint;
-  }
+  throw "Undefined boundary"
+    unless defined $boundary;
 
-  my $aa = $self->db->get_AnalysisAdaptor();
-  my $an = $aa->fetch_by_logic_name($logic_name);
+  $boundary eq 'start' or $boundary eq 'end'
+    or throw "Wrong boundary: select start|end";
 
-  if ( !defined($an) ) {
-    return undef;
-  }
+  $boundary = 'seq_region_' . $boundary;
 
-  my $an_id = $an->dbID();
+  my $sql_helper = $self->dbc->sql_helper;
+  throw "Unable to get SqlHelper instance" unless defined $sql_helper;
 
-  $constraint .= ' AND' if($constraint);
-  $constraint .= " ${prim_synonym}.analysis_id = $an_id";
-  return $constraint;
+  my $feature_table = ($self->_tables)[0]->[0];
+  warning (sprintf "Unable to get %s for %s instance\nCould not find associated feature table, returning undef", $boundary, ref $feature)
+    and return undef unless defined $feature_table;
+
+  my $db_id = $feature->dbID;
+  my $attrib_id = $feature_table . '_id';
+  my $query = "SELECT ${boundary} from ${feature_table} WHERE ${attrib_id} = ${db_id}"; 
+
+  return $sql_helper->execute_single_result(-SQL => $query);
 }
-
 
 =head2 store
 
@@ -1375,60 +1361,6 @@ sub _list_seq_region_ids {
   $sth->finish;
 
   return \@out;
-}
-
-
-=head1 DEPRECATED METHODS
-
-=cut
-
-
-=head2 fetch_all_by_RawContig_constraint
-
-  Description: DEPRECATED use fetch_all_by_RawContig_constraint instead
-
-=cut
-
-sub fetch_all_by_RawContig_constraint {
-  my $self = shift;
-  deprecate('Use fetch_all_by_Slice_constraint() instead.');
-  return $self->fetch_all_by_slice_constraint(@_);
-}
-
-=head2 fetch_all_by_RawContig
-
-  Description: DEPRECATED use fetch_all_by_Slice instead
-
-=cut
-
-sub fetch_all_by_RawContig {
-  my $self = shift;
-  deprecate('Use fetch_all_by_Slice() instead.');
-  return $self->fetch_all_by_Slice(@_);
-}
-
-=head2 fetch_all_by_RawContig_and_score
-
-  Description: DEPRECATED use fetch_all_by_Slice_and_score instead
-
-=cut
-
-sub fetch_all_by_RawContig_and_score{
-  my $self = shift;
-  deprecate('Use fetch_all_by_Slice_and_score() instead.');
-  return $self->fetch_all_by_Slice_and_score(@_);
-}
-
-=head2 remove_by_RawContig
-
-  Description: DEPRECATED use remove_by_Slice instead
-
-=cut
-
-sub remove_by_RawContig {
-  my $self = shift;
-  deprecate("Use remove_by_Slice instead");
-  return $self->remove_by_Slice(@_);
 }
 
 

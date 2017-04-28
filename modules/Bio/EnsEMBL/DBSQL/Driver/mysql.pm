@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,6 +33,20 @@ use warnings;
 use strict;
 
 use base 'Bio::EnsEMBL::DBSQL::Driver';
+
+#
+# override parent's method to enable MySQL local load data in case DBD::mysql 
+# has been compiled against a C client library which has been built with
+# no support for this feature
+#
+sub connect_params {
+  my ($self, $conn) = @_;
+
+  my $params = $self->SUPER::connect_params($conn);
+  $params->{attributes}{mysql_local_infile} = 1;
+
+  return $params;
+}
 
 sub from_date_to_seconds {
     my ($self, $column) = @_;

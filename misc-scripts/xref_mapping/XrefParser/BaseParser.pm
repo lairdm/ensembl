@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -901,6 +902,7 @@ sub add_xref {
   my $description = $arg_ref->{desc}       || '';
   my $version     = $arg_ref->{version}    || 0;
   my $info_type   = $arg_ref->{info_type}  || 'MISC';
+  my $info_text   = $arg_ref->{info_text}  || '';
 
 
   ##################################################################
@@ -919,8 +921,8 @@ sub add_xref {
   if (!(defined $add_xref_sth) ) {
     $add_xref_sth =
       $self->dbi->prepare( 'INSERT INTO xref '
-         . '(accession,version,label,description,source_id,species_id, info_type) '
-         . 'VALUES(?,?,?,?,?,?,?)' );
+         . '(accession,version,label,description,source_id,species_id, info_type, info_text) '
+         . 'VALUES(?,?,?,?,?,?,?,?)' );
   }
 
   ######################################################################
@@ -938,7 +940,7 @@ sub add_xref {
   # Add the xref and croak if it fails
   ####################################
   $add_xref_sth->execute( $acc, $version || 0, $label,
-                          $description, $source_id, $species_id, $info_type
+                          $description, $source_id, $species_id, $info_type, $info_text
   ) or croak("$acc\t$label\t\t$source_id\t$species_id\n");
 
   return $add_xref_sth->{'mysql_insertid'};
@@ -1035,6 +1037,7 @@ sub add_to_direct_xrefs{
   my $label       = $arg_ref->{label}       || $acc;
   my $description = $arg_ref->{desc};
   my $linkage     = $arg_ref->{linkage};
+  my $info_text   = $arg_ref->{info_text}  || '';
 
   my $dbi= $self->dbi();
 
@@ -1043,8 +1046,8 @@ sub add_to_direct_xrefs{
   ######################
   if(!(defined $add_xref_sth)){
     my $sql = (<<'AXX');
-  INSERT INTO xref (accession,version,label,description,source_id,species_id, info_type)
-          VALUES (?,?,?,?,?,?,?)
+  INSERT INTO xref (accession,version,label,description,source_id,species_id, info_type, info_text)
+          VALUES (?,?,?,?,?,?,?,?)
 AXX
     $add_xref_sth = $dbi->prepare($sql);
   }
@@ -1056,7 +1059,7 @@ AXX
   if(!(defined $direct_id)){
     $add_xref_sth->execute(
         $acc, $version || 0, $label,
-        $description, $source_id, $species_id, 'DIRECT'
+        $description, $source_id, $species_id, 'DIRECT', $info_text
     ) or croak("$acc\t$label\t\t$source_id\t$species_id\n");
   }
 
@@ -1123,6 +1126,7 @@ sub add_dependent_xref{
   my $label       = $arg_ref->{label}          || $acc;
   my $description = $arg_ref->{desc};
   my $linkage     = $arg_ref->{linkage};
+  my $info_text   = $arg_ref->{info_text} || '';
 
   my $dbi = $self->dbi;
 
@@ -1132,8 +1136,8 @@ sub add_dependent_xref{
   if(!(defined $add_xref_sth)){
     my $sql = (<<'IXR');
 INSERT INTO xref
-  (accession,version,label,description,source_id,species_id, info_type)
-  VALUES (?,?,?,?,?,?,?)
+  (accession,version,label,description,source_id,species_id, info_type, info_text)
+  VALUES (?,?,?,?,?,?,?,?)
 IXR
     $add_xref_sth = $dbi->prepare($sql);
   }
@@ -1154,7 +1158,7 @@ ADX
   if(!(defined $dependent_id)){
     $add_xref_sth->execute(
         $acc, $version, $label,
-        $description, $source_id, $species_id, 'DEPENDENT'
+        $description, $source_id, $species_id, 'DEPENDENT', $info_text
     ) or croak("$acc\t$label\t\t$source_id\t$species_id\n");
   }
   $dependent_id = $self->get_xref($acc, $source_id, $species_id);
@@ -1170,11 +1174,11 @@ ADX
   # If the dependency has not already been set ( is already in hash xref_dependent_mapped)
   # then add it
   ########################################################################################
-  if(!(defined $xref_dependent_mapped{"$master_xref|$dependent_id"})){
+  if(!(defined $xref_dependent_mapped{"$master_xref|$dependent_id"}) || $xref_dependent_mapped{"$master_xref|$dependent_id"} ne $linkage){
     $add_dependent_xref_sth->execute( $master_xref, $dependent_id, $linkage,
 				      $source_id )
       or croak("$master_xref\t$dependent_id\t$linkage\t$source_id");
-    $xref_dependent_mapped{"$master_xref|$dependent_id"} = 1;
+    $xref_dependent_mapped{"$master_xref|$dependent_id"} = $linkage;
   }
 
   return $dependent_id;

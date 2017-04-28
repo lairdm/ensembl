@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -156,9 +157,50 @@ sub fetch_by_stable_id {
   $self->bind_param_generic_fetch($stable_id,SQL_VARCHAR);
   my ($exon) = @{ $self->generic_fetch($constraint) };
 
+  # If we didn't get anything back, desperately try to see if there's
+  # a version number in the stable_id
+  if(!defined($exon) && (my $vindex = rindex($stable_id, '.'))) {
+      $exon = $self->fetch_by_stable_id_version(substr($stable_id,0,$vindex),
+						substr($stable_id,$vindex+1));
+  }
+
   return $exon;
 }
 
+
+=head2 fetch_by_stable_id_version
+
+  Arg [1]    : String $id 
+               The stable ID of the exon to retrieve
+  Arg [2]    : Integer $version
+               The version of the stable_id to retrieve
+  Example    : $exon = $exon_adaptor->fetch_by_stable_id('ENSE0000988221', 3);
+  Description: Retrieves an exon object from the database via its stable id and version.
+               The exon will be retrieved in its native coordinate system (i.e.
+               in the coordinate system it is stored in the database). It may
+               be converted to a different coordinate system through a call to
+               transform() or transfer(). If the exon is not found
+               undef is returned instead.
+  Returntype : Bio::EnsEMBL::Exon or undef
+  Exceptions : if we cant get the exon in given coord system
+  Caller     : general
+  Status     : Stable
+
+=cut
+
+sub fetch_by_stable_id_version {
+    my ($self, $stable_id, $version) = @_;
+
+    # Enforce that version be numeric
+    return unless($version =~ /^\d+$/);
+
+    my $constraint = "e.stable_id = ? AND e.version = ? AND e.is_current = 1";
+    $self->bind_param_generic_fetch($stable_id, SQL_VARCHAR);
+    $self->bind_param_generic_fetch($version, SQL_INTEGER);
+    my ($exon) = @{$self->generic_fetch($constraint)};
+
+    return $exon;
+}
 
 =head2 fetch_all_versions_by_stable_id 
 
@@ -311,7 +353,8 @@ sub store {
   if ( defined($exon->stable_id) ) {
       my $created = $self->db->dbc->from_seconds_to_date($exon->created_date());
       my $modified = $self->db->dbc->from_seconds_to_date($exon->modified_date());
-      $exon_sql .= ", stable_id, version, created_date, modified_date) VALUES ( ?,?,?,?,?,?,?,?,?,?,". $created . ",". $modified ." )";
+
+      $exon_sql .= sprintf ", stable_id, version%s%s) VALUES ( ?,?,?,?,?,?,?,?,?,?%s%s)", $created?", created_date":'', $modified?", modified_date":'', $created?",$created":'', $modified?",$modified":'';
      
   } else {
       $exon_sql .= q{
@@ -730,118 +773,6 @@ sub _objs_from_sth {
 
   return \@exons;
 } ## end sub _objs_from_sth
-
-=head1 DEPRECATED METHODS
-
-=cut
-
-
-=head2 get_stable_entry_info
-
-  Description: DEPRECATED. This method is no longer necessary.  Exons are
-               always fetched with their stable identifiers (if they exist) and
-               no lazy loading is necessary.
-
-=cut
-
-sub get_stable_entry_info {
-  my ($self,$exon) = @_;
-
-  deprecated( "This method call shouldnt be necessary" );
-
-  if( !$exon || !ref $exon || !$exon->isa('Bio::EnsEMBL::Exon') ) {
-     $self->throw("Needs a exon object, not a $exon");
-  }
-  if(!$exon->dbID){
-    #$self->throw("can't fetch stable info with no dbID");
-    return;
-  }
-
-  my $created_date = $self->db->dbc->from_date_to_seconds("created_date");
-  my $modified_date = $self->db->dbc->from_date_to_seconds("modified_date");
-  my $sth = $self->prepare("SELECT stable_id, " . $created_date . ",
-                                   " . $modified_date . ", version 
-                            FROM   exon
-                            WHERE  exon_id = ");
-
-  $sth->bind_param(1, $exon->dbID, SQL_INTEGER);
-  $sth->execute();
-
-  # my @array = $sth->fetchrow_array();
-  if( my $aref = $sth->fetchrow_arrayref() ) {
-    $exon->{'_stable_id'} = $aref->[0];
-    $exon->{'_created'}   = $aref->[1];
-    $exon->{'_modified'}  = $aref->[2];
-    $exon->{'_version'}   = $aref->[3];
-  }
-
-  return 1;
-}
-
-
-=head2 fetch_all_by_gene_id
-
-  Description: DEPRECATED. This method should not be needed - Exons can
-               be fetched by Transcript.
-
-=cut
-
-sub fetch_all_by_gene_id {
-  my ( $self, $gene_id ) = @_;
-  my %exons;
-  my $hashRef;
-  my ( $currentId, $currentTranscript );
-
-  deprecated( "Hopefully this method is not needed any more. Exons should be fetched by Transcript" );
-
-  if( !$gene_id ) {
-      $self->throw("Gene dbID not defined");
-  }
-  
-  $self->{rchash} = {};
-  
-  my $straight_join = $self->_can_straight_join ? 'STRAIGHT_JOIN' : '';
-  my $query = qq {
-    SELECT 
-      ${straight_join}
-	e.exon_id
-      , e.contig_id
-      , e.contig_start
-      , e.contig_end
-      , e.contig_strand
-      , e.phase
-      , e.end_phase
-      , e.sticky_rank
-    FROM transcript t
-      , exon_transcript et
-      , exon e
-    WHERE t.gene_id = ?
-      AND et.transcript_id = t.transcript_id
-      AND e.exon_id = et.exon_id
-    ORDER BY t.transcript_id,e.exon_id
-      , e.sticky_rank DESC
-  };
-
-  my $sth = $self->prepare( $query );
-  $sth->bind_param(1,$gene_id,SQL_INTEGER);
-  $sth->execute();
-
-  while( $hashRef = $sth->fetchrow_hashref() ) {
-    if( ! exists $exons{ $hashRef->{exon_id} } ) {
-
-      my $exon = $self->_exon_from_sth( $sth, $hashRef );
-
-      $exons{$exon->dbID} = $exon;
-    }
-  }
-  delete $self->{rchash};
-  
-  my @out = ();
-
-  push @out, values %exons;
-
-  return \@out;
-}
 
 
 1;

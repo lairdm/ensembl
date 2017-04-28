@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -93,10 +94,12 @@ sub new {
   my $class = ref($caller) || $caller;
   my $self = $class->SUPER::new(@_);
 
-  my ($transcript, $type) = rearrange(['TRANSCRIPT','TYPE'],@_);
+  my ($transcript, $type, $seq_region_start, $seq_region_end) = rearrange(['TRANSCRIPT','TYPE', 'SEQ_REGION_START', 'SEQ_REGION_END'],@_);
 
   $self->{'transcript'} = $transcript;
   $self->{'type'} = $type;
+  $self->{'seq_region_start'} = $seq_region_start;
+  $self->{'seq_region_end'} = $seq_region_end;
 
   return $self;
 }
@@ -121,6 +124,82 @@ sub transcript {
   return $self->{'transcript'};
 }
 
+=head2 translation
+
+    Description: Fetch the translation associated with
+                 this transcript, if it exists. Return undef
+                 if there is no translation, ie. a pseudogene
+    Returntype : Bio::EnsEMBL::Translation or undef
+    Caller     : general
+    Status     : Stable
+
+=cut
+
+sub translation {
+    my $self = shift;
+    return $self->transcript()->translation();
+}
+
+=head2 seq_region_start
+
+  Arg [1]    : (optional) string $seq_region_start
+  Example    : $seq_region_start = $cds->seq_region_start();
+  Description: Getter/Setter for the seq_region_start for this UTR.
+               Overwrite default method from Feature as UTR does not have
+               a table
+  Returntype : String
+  Exceptions : none
+  Caller     : general
+  Status     : Stable
+
+=cut
+
+sub seq_region_start {
+  my $self = shift;
+  $self->{'seq_region_start'} = shift if(@_);
+  return $self->{'seq_region_start'};
+}
+
+=head2 seq_region_end
+
+  Arg [1]    : (optional) string $seq_region_end
+  Example    : $seq_region_end = $cds->seq_region_end();
+  Description: Getter/Setter for the seq_region_end for this UTR.
+               Overwrite default method from Feature as UTR does not have
+               a table
+  Returntype : String
+  Exceptions : none
+  Caller     : general
+  Status     : Stable
+
+=cut
+
+sub seq_region_end {
+  my $self = shift;
+  $self->{'seq_region_end'} = shift if(@_);
+  return $self->{'seq_region_end'};
+}
+
+=head2 get_Gene
+
+  Description: Get the gene associated with the ExonTranscript,
+               if a transcript has been set
+  Returntype : Bio::EnsEMBL::Gene or undef
+  Exceptions : none
+  Caller     : general
+  Status     : Stable
+
+=cut
+
+sub get_Gene {
+    my $self = shift;
+
+    if($self->{'transcript'}) {
+	return $self->{'transcript'}->get_Gene();
+    }
+
+    return;
+}
 
 =head2 type
 

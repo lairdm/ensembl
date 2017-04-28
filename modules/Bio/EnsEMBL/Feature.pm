@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -149,9 +150,9 @@ sub new {
 
   if(defined($start) && defined($end)) {
       if (($start =~ /\d+/) && ($end =~ /\d+/)) {
-	  if($end+1 < $start and !$slice->is_circular()) {
-	      throw(sprintf('Start (%d) must be less than or equal to end+1 (%d)', $start, ($end+1)));
-	  }
+        if($end+1 < $start and $slice and !$slice->is_circular()) {
+          throw(sprintf('Start (%d) must be less than or equal to end+1 (%d)', $start, ($end+1)));
+        }
       } else {
 	      throw('Start and end must be integers');
       }
@@ -1084,7 +1085,9 @@ sub seq_region_strand {
                feature on the seq_region, as opposed to the relative (slice) 
                position.
 
-               Returns undef if this feature is not on a slice.
+               Returns undef if this feature is not on a slice or slice is
+               circular and cannot determine the position of the feature from
+               the db.
   Returntype : int or undef
   Exceptions : none
   Caller     : general
@@ -1098,10 +1101,12 @@ sub seq_region_start {
   my $slice = $self->slice();
   
   if ( defined($slice) ) {
-
-    return $self->_seq_region_boundary_from_db('start')
-      if $slice->is_circular() and $self->adaptor();
-
+    if ($slice->is_circular()) {
+      return $self->adaptor->_seq_region_boundary_from_db($self, 'start')
+	if $self->adaptor();
+      return undef;
+    }
+    
     my $start;
     if ( $slice->strand() == 1 ) {
       $start = $slice->start() + $self->start() - 1
@@ -1126,7 +1131,9 @@ sub seq_region_start {
                feature on the seq_region, as opposed to the relative (slice)
                position.
 
-               Returns undef if this feature is not on a slice.
+               Returns undef if this feature is not on a slice or slice is
+               circular and cannot determine the position of the feature from
+               the db.
   Returntype : int or undef
   Exceptions : none
   Caller     : general
@@ -1140,9 +1147,11 @@ sub seq_region_end {
   my $slice = $self->slice();
 
   if ( defined($slice) ) {
-
-    return $self->_seq_region_boundary_from_db('end')
-      if $slice->is_circular() and $self->adaptor();
+    if ($slice->is_circular()) {
+      return $self->adaptor->_seq_region_boundary_from_db($self, 'end')
+	if $self->adaptor();
+      return undef;
+    }
 
     my $end;
     if ( $slice->strand() == 1 ) {
@@ -1430,7 +1439,7 @@ sub overlaps_local {
 
 sub get_overlapping_Genes{
   my ($self, $match_strands, $five_prime, $three_prime) = @_;
-  my $ga = Bio::EnsEMBL::Registry->get_adaptor($self->adaptor->db->species,'core','Gene');
+  my $ga = Bio::EnsEMBL::Registry->get_adaptor($self->species,'core','Gene');
   my $list = $ga->fetch_all_nearest_by_Feature(-FEATURE => $self, -RANGE => 0, -THREE_PRIME => $three_prime, -FIVE_PRIME => $five_prime, -MATCH_STRAND => $match_strands);
   return [ map { $_->[0] } @$list ];
 }
@@ -1448,7 +1457,7 @@ sub get_overlapping_Genes{
 
 sub get_nearest_Gene {
   my $self = shift; 
-  my $ga = Bio::EnsEMBL::Registry->get_adaptor($self->adaptor->db->species,'core','Gene');
+  my $ga = Bio::EnsEMBL::Registry->get_adaptor($self->species,'core','Gene');
   my $list = $ga->fetch_nearest_by_Feature($self);
   if ($list && @$list >0) {
     my ($gene, $distance) = @{ $list };
@@ -1493,17 +1502,6 @@ sub species {
   my ($self) = @_;
   throw "Can only call this method if you have attached an adaptor" if ! $self->adaptor();
   return $self->adaptor()->db()->species();
-}
-
-
-=head2 contig
-
- Deprecated - Included for backwards compatibility only.
- Use slice() instead
-=cut
-sub contig {
-  deprecate('Use slice() instead');
-  slice(@_);
 }
 
 
@@ -1591,81 +1589,6 @@ sub _deprecated_transform {
           "(or never was) supported.  Doing nothing instead.");
 
   return $self;
-}
-
-
-=head2 id
-
-Deprecated - only included for backwards compatibility.
-Use display_id, hseqname, dbID or stable_id instead
-
-=cut
-
-sub id {
-  my $self = shift;
-  deprecate("id method is not used - use display_id instead");
-  return $self->{'stable_id'} if($self->{'stable_id'});
-  return $self->{'hseqname'} if($self->{'hseqname'});
-  return $self->{'seqname'}  if($self->{'seqname'});
-  return $self->{'dbID'};
-}
-
-my $feature_tables = 
-  {
-   'Bio::EnsEMBL::AssemblyExceptionFeature' => 'assembly_exception',
-   'Bio::EnsEMBL::DensityFeature' => 'density_feature',
-   'Bio::EnsEMBL::Exon' => 'exon',
-   'Bio::EnsEMBL::ExonTranscript' => 'exon',
-   'Bio::EnsEMBL::PredictionExon' => 'prediction_exon',
-   'Bio::EnsEMBL::Gene' => 'gene',
-   'Bio::EnsEMBL::IntronSupportingEvidence' => 'intron_supporting_evidence',
-   'Bio::EnsEMBL::KaryotypeBand' => 'karyotype',
-   'Bio::EnsEMBL::Map::DitagFeature' => 'ditag_feature',
-   'Bio::EnsEMBL::Map::MarkerFeature' => 'marker_feature',
-   'Bio::EnsEMBL::MiscFeature' => 'misc_feature',
-   'Bio::EnsEMBL::Operon' => 'operon',
-   'Bio::EnsEMBL::OperonTranscript' => 'operon_transcript',
-   'Bio::EnsEMBL::RepeatFeature' => 'repeat_feature',
-   'Bio::EnsEMBL::SimpleFeature' => 'simple_feature',
-   'Bio::EnsEMBL::Transcript' => 'transcript',
-   'Bio::EnsEMBL::PredictionTranscript' => 'prediction_transcript'
-  };
-
-#
-# get seq region boundary (start|end) for a feature
-# the method attempts to retrieve the boundary directly from the db
-# if feature is not of class in the feature_table hash, it means the
-# feature it's not stored in the db or we don't know how to get the
-# region boundary from the db.
-# Return undef in these cases.
-#
-sub _seq_region_boundary_from_db {
-  my ($self, $boundary) = @_;
-
-  throw "Undefined boundary"
-    unless defined $boundary;
-
-  $boundary eq 'start' or $boundary eq 'end'
-    or throw "Wrong boundary: select start|end";
-
-  $boundary = 'seq_region_' . $boundary;
-    
-  my $sql_helper = 
-    $self->adaptor->dbc->sql_helper;
-  throw "Unable to get SqlHelper instance"
-    unless defined $sql_helper;
-
-  my $feature_table =
-    $feature_tables->{ref $self};
-
-  return undef unless defined $feature_table;
-
-  my $db_id = $self->dbID;
-  my $attrib_id = $feature_table . '_id';
-  my $query = "SELECT ${boundary} from ${feature_table} WHERE ${attrib_id} = ${db_id}"; 
-  
-  return $sql_helper->execute_single_result(-SQL => $query);
-
 }
 
 1;

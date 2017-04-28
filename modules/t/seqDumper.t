@@ -1,4 +1,5 @@
 # Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+# Copyright [2016-2017] EMBL-European Bioinformatics Institute
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +17,7 @@ use strict;
 use warnings;
 
 use Test::More;
+use Test::Warnings;
 
 use IO::String;
 use Bio::EnsEMBL::Slice;
@@ -103,7 +105,20 @@ my $index_count_fh = sub {
     is(scalar(@{$lines}), 1, 'Expect only 1 EMBL SQ line describing a sequence');
     is($lines->[0], 'SQ   Sequence     100001 BP;      24986 A;      24316 C;      24224 G;      26475 T;          0 other;', 'Formatting of SQ as expected');
   }
+
+  # check if transl_table is included
+  $sd = Bio::EnsEMBL::Utils::SeqDumper->new();
+  $sd->{feature_types}->{$_} = 0 for keys %{$sd->{feature_types}};
+  $sd->{feature_types}->{'gene'} = 1;
   
+  {
+    my $mt_slice = $slice_adaptor->fetch_by_region('chromosome', 'MT_NC_001807', 10060, 10405);
+    my $fh = IO::String->new();
+    $sd->dump_embl($mt_slice, $fh);
+    my $lines = $index_fh->($fh, 'FT ');
+    like( $lines->[9], qr/FT\s+\/transl_table=2/,  "Expected transl_table line at FT  CDS");
+  }
+
   {
     my $fh = IO::String->new();
     $sd->dump_genbank($slice, $fh);

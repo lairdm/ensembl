@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -151,6 +152,7 @@ sub run {
 
       # Skip "NOT" terms entirely
       next if ($array[3] eq "NOT");
+      my $info_text = $array[14];
 
       $array[9] =~ s/\'/\\\'/gx; # replace ' with \'
       my $master=0;
@@ -168,6 +170,7 @@ sub run {
               label          => $array[4],
               desc           => $go_to_desc{$array[4]} || '',
               linkage        => $array[6],
+              info_text      => $info_text,
               source_id      => $source_id,
               species_id     => $species_id} );
             $refseq_count++;
@@ -187,6 +190,7 @@ sub run {
               label          => $array[4],
               desc           => $go_to_desc{$array[4]} || '',
               linkage        => $array[6],
+              info_text      => $info_text,
               source_id      => $source_id,
               species_id     => $species_id} );
             $uniprot_count++;
@@ -213,6 +217,7 @@ sub run {
                                         label          => $array[4],
                                         desc           => $go_to_desc{$array[4]} || '',
                                         linkage        => $array[6],
+                                        info_text      => $info_text,
                                         source_id      => $gene_source_id,
                                         species_id     => $species_id} );
             $worm_count++;
@@ -237,6 +242,7 @@ sub run {
                 label          => $array[4],
                 desc           => $go_to_desc{$array[4]} || '',
                 linkage        => $array[6],
+                info_text      => $info_text,
                 source_id      => $source_id,
                 species_id     => $species_id} );
             $zfish_count++;
@@ -263,6 +269,7 @@ sub run {
                 label          => $array[4],
                 desc           => $go_to_desc{$array[4]} || '',
                 linkage        => $array[6],
+                info_text      => $info_text,
                 source_id      => $source_id,
                 species_id     => $species_id} );
             $mgi_count++;
@@ -300,6 +307,7 @@ sub run {
                       label          => $array[4],
                       desc           => $go_to_desc{$array[4]} || '',
                       linkage        => $array[6],
+                      info_text      => $info_text,
                       source_id      => $source_id,
                       species_id     => $species_id} );
               $sgd_count++;
@@ -323,6 +331,7 @@ sub run {
                                         label          => $array[4],
                                         desc           => $go_to_desc{$array[4]} || '',
                                         linkage        => $array[6],
+                                        info_text      => $info_text,
                                         source_id      => $gene_source_id,
                                         species_id     => $species_id} );
             $flyb_count++;

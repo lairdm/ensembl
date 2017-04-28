@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
-# Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+# Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+# Copyright [2016-2017] EMBL-European Bioinformatics Institute
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -160,7 +161,15 @@ sub run_on_dba {
 sub get_liftover_mappings {
   my ($core_dba) = @_;
   my $mappings = $core_dba->get_MetaContainer()->list_value_by_key('liftover.mapping');
-  return [ map { $_ =~ /.+:(.+)#.+:(.+)/; [$1, $2] } @{$mappings} ];
+  my %unique_mappings;
+  foreach my $mapping (@{$mappings}) {
+      die "Can't parse mapping string for coord system version '${mapping}'!\n"
+          unless $mapping =~ /.+:(.+)#.+:(.+)/;
+      my $version_1 = $1;
+      my $version_2 = $2;
+      $unique_mappings{$version_1. ":". $version_2} = [$version_1, $version_2];
+  }
+  return [values %unique_mappings];
 }
 
 sub write_mappings {
@@ -247,27 +256,25 @@ sub build_chain_mappings {
       $t_end = $current->{asm_end};
       $q_end = ($ori == 1) ? $current->{cmp_end} : $current->{cmp_start};
 
-      if ($i != 0) {
-        #If strand was negative we need to represent all data as reverse complemented regions
-        if($q_strand == -1) {
-          # $t_start = ($t_size - $t_start)+1;
-          # $t_end = ($t_size - $t_end)+1;
-          $q_start = ($q_size - $q_start)+1;
-          $q_end = ($q_size - $q_end)+1;
-        }
-        # Convert to UCSC formats (0-based half-open intervals and +/- strands)
-        $t_start--;
-        $q_start--;
-        $t_strand = ($t_strand == 1) ? '+' : '-';
-        $q_strand = ($q_strand == 1) ? '+' : '-';
-
-        #Store the chain
-        my $chain_score = 1;
-        push(@chain_mappings, {
-          header => ['chain', $chain_score, $t_name, $t_size, $t_strand, $t_start, $t_end, $q_name, $q_size, $q_strand, $q_start, $q_end, $chain_id],
-          gaps => [@chain_gaps]
-        });
+      #If strand was negative we need to represent all data as reverse complemented regions
+      if($q_strand == -1) {
+        # $t_start = ($t_size - $t_start)+1;
+        # $t_end = ($t_size - $t_end)+1;
+        $q_start = ($q_size - $q_start)+1;
+        $q_end = ($q_size - $q_end)+1;
       }
+      # Convert to UCSC formats (0-based half-open intervals and +/- strands)
+      $t_start--;
+      $q_start--;
+      $t_strand = ($t_strand == 1) ? '+' : '-';
+      $q_strand = ($q_strand == 1) ? '+' : '-';
+
+      #Store the chain
+      my $chain_score = 1;
+      push(@chain_mappings, {
+        header => ['chain', $chain_score, $t_name, $t_size, $t_strand, $t_start, $t_end, $q_name, $q_size, $q_strand, $q_start, $q_end, $chain_id],
+        gaps => [@chain_gaps]
+      });
 
       if(! defined $next) {
         last;
@@ -381,4 +388,3 @@ sub ensembl_to_ucsc_name {
   }
   return $ucsc_name_cache{$prod_name}{$ensembl_name} = $ucsc_name;  
 }
-

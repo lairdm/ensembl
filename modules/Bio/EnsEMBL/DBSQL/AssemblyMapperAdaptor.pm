@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -1801,62 +1802,6 @@ sub delete_cache{
   %{$self->{'_asm_mapper_cache'}} = ();
   return;
 }
-
-
-=head2 register_region
-
-  Description: DEPRECATED use register_assembled instead
-
-=cut
-
-sub register_region{
-  my ($self, $assmapper, $type, $chr_name, $start, $end) = @_;
-
-  deprecate('Use register_assembled instead');
-
-  $self->register_assembled($assmapper, $chr_name, $start, $end);
-}
-
-
-=head2 register_contig
-
-  Description: DEPRECATED use register_component instead
-
-=cut
-
-sub register_contig {
-   my ($self, $assmapper, $type, $contig_id ) = @_;
-
-   deprecate('Use register_component instead');
-
-   #not sure if the use is passing in a seq_region_name or a
-   #seq_region_id...
-   register_component($assmapper, $contig_id);
-}
-
-
-=head2 fetch_by_type
-
-  Description: DEPRECATED use fetch_by_CoordSystems instead
-
-=cut
-
-sub fetch_by_type{
-  my ($self,$type) = @_;
-
-  deprecate('Use fetch_by_CoordSystems instead');
-
-  #assume that what the user wanted was a mapper between the sequence coord
-  #level and the top coord level
-
-  my $csa = $self->db()->get_CoordSystemAdaptor();
-
-  my $cs1 = $csa->fetch_top_level($type);
-  my $cs2 = $csa->fetch_sequence_level();
-
-  return $self->fetch_by_CoordSystems($cs1,$cs2);
-}
-
 
 
 1;

@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +28,7 @@ use File::Basename;
 use IPC::Open3;
 
 # Path to exonerate executable
-my $exonerate_path = "/software/ensembl/exonerate-2.2.0/bin/exonerate";
+my $exonerate_path = `which exonerate`; $exonerate_path =~ s/\n//;
 
 sub new {
 
@@ -142,10 +143,10 @@ sub resubmit_exonerate {
 
   chmod 0755, $exe_file;
 
-  my $queue = $self->mapper->farm_queue || 'normal';
+  my $queue = $self->mapper->farm_queue || 'production-rh7';
   
-  my $usage = '-M 1500 -R"select[mem>1500] rusage[tmp='.$disk_space_needed.', mem=1500]" -J "'.$unique_name.'" -q '.$queue;
-
+  my $usage = '-M 1500 -R"select[mem>1500] rusage[tmp='.$disk_space_needed.', mem=1500]" -J "'.$unique_name.'"';
+  $queue and $usage .=  ' -q '. $queue;
 
   my $com = "bsub $usage -o $root_dir/$outfile -e $root_dir/$errfile ".$exe_file;
 
@@ -283,10 +284,11 @@ EON
 
   my $output = $self->get_class_name() . "_" . $ensembl_type . "_" . "\$LSB_JOBINDEX.map";
 
-  my $queue = $self->mapper->farm_queue || 'normal';
+  my $queue = $self->mapper->farm_queue || 'production-rh7';
 
 
-  my $usage = "-q $queue ".'-M 1500 -R"select[mem>1500] rusage[tmp='.$disk_space_needed.', mem=1500]" '.'-J "'.$unique_name.'[1-'.$num_jobs.']%200" -o '.$prefix.'.%J-%I.out -e  '.$prefix.'.%J-%I.err';
+  my $usage = '-M 1500 -R"select[mem>1500] rusage[tmp='.$disk_space_needed.', mem=1500]" '.'-J "'.$unique_name.'[1-'.$num_jobs.']%200" -o '.$prefix.'.%J-%I.out -e  '.$prefix.'.%J-%I.err';
+  $queue and $usage = "-q $queue " . $usage;
 
 
   my $command = $exe." ".$query." ".$target.' --querychunkid $LSB_JOBINDEX --querychunktotal '.$num_jobs.' --showvulgar false --showalignment FALSE --ryo "xref:%qi:%ti:%ei:%ql:%tl:%qab:%qae:%tab:%tae:%C:%s\n" '.$options_str;

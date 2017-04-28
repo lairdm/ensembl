@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -200,7 +201,7 @@ sub new {
 =head2 is_known
 
   Example    : print "Gene ".$gene->stable_id." is KNOWN\n" if $gene->is_known;
-  Description: Returns TRUE if this gene has a status of 'KNOWN'
+  Description: DEPRECATED. Returns TRUE if this gene has a status of 'KNOWN'
   Returntype : TRUE if known, FALSE otherwise
   Exceptions : none
   Caller     : general
@@ -211,6 +212,7 @@ sub new {
 
 sub is_known{
   my $self = shift;
+  deprecate("is_known is deprecated and will be removed in e90. Please consider checking supporting features instead");
   return ( $self->{'status'} eq "KNOWN" || $self->{'status'} eq "KNOWN_BY_PROJECTION" );
 }
 
@@ -250,7 +252,7 @@ sub external_name {
 
   Arg [1]    : (optional) String - status to set
   Example    : $gene->status('KNOWN');
-  Description: Getter/setter for attribute status
+  Description: DEPRECATED. Getter/setter for attribute status
   Returntype : String
   Exceptions : none
   Caller     : general
@@ -260,6 +262,7 @@ sub external_name {
 
 sub status {
    my $self = shift;
+  deprecate("status is deprecated and will be removed in e90. Please consider checking supporting features instead");
   $self->{'status'} = shift if( @_ );
   return $self->{'status'};
 }
@@ -1013,7 +1016,12 @@ sub get_all_Transcripts {
       $self->{'_transcript_array'} = $transcripts;
     }
   }
-  return $self->{'_transcript_array'};
+  my @array_copy;
+  if (defined $self->{'_transcript_array'}) {
+    @array_copy = @{ $self->{'_transcript_array'} } ;
+    return \@array_copy;
+  }
+  return;
 }
 
 
@@ -1078,6 +1086,34 @@ sub stable_id {
   return $self->{'stable_id'};
 }
 
+=head2 stable_id_version
+
+  Arg [1]    : (optional) String - the stable ID with version to set
+  Example    : $gene->stable_id("ENSG0000000001.3");
+  Description: Getter/setter for stable id with version for this gene.
+  Returntype : String
+  Exceptions : none
+  Caller     : general
+  Status     : Stable
+
+=cut
+
+sub stable_id_version {
+    my $self = shift;
+    if(my $stable_id = shift) {
+	# See if there's an embedded period, assume that's a
+	# version, might not work for some species but you
+	# should use ->stable_id() and version() if you're worried
+	# about ambiguity
+	my $vindex = rindex($stable_id, '.');
+	# Set the stable_id and version pair depending on if
+	# we found a version delimiter in the stable_id
+	($self->{stable_id}, $self->{version}) = ($vindex > 0 ?
+						  (substr($stable_id,0,$vindex), substr($stable_id,$vindex+1)) :
+						  $stable_id, undef);
+    }
+    return $self->{stable_id} . ($self->{version} ? ".$self->{version}" : '');
+}
 
 =head2 is_current
 
@@ -1480,7 +1516,7 @@ sub summary_as_hash {
   $summary_ref->{'description'} = $self->description;
   $summary_ref->{'biotype'} = $self->biotype;
   $summary_ref->{'Name'} = $self->external_name if $self->external_name;
-  $summary_ref->{'logic_name'} = $self->analysis->logic_name();
+  $summary_ref->{'logic_name'} = $self->analysis->logic_name() if defined $self->analysis();
   $summary_ref->{'source'} = $self->source();
   $summary_ref->{'gene_id'} = $summary_ref->{'id'};
 
@@ -1488,6 +1524,12 @@ sub summary_as_hash {
   my $havana_gene = $self->havana_gene();
   $summary_ref->{'havana_gene'} = $havana_gene->display_id() if defined $havana_gene;
   $summary_ref->{'havana_version'} = $havana_gene->version() if defined $havana_gene;
+
+  ## Stable identifier of the parent gene this gene was projected from
+   my $proj_parent_attributes = $self->get_all_Attributes("proj_parent_g");
+    if (@{$proj_parent_attributes}) {
+      $summary_ref->{'projection_parent_gene'} = $proj_parent_attributes->[0]->value;
+    }
   return $summary_ref;
 }
 
@@ -1518,77 +1560,6 @@ sub havana_gene {
 # DEPRECATED METHODS FOLLOW
 ###########################
 
-=head2 DEPRECATED add_DBLink
-
-  Description: DEPRECATED This method has been deprecated in favour of the
-               add_DBEntry method.  Objects are responible for holding only
-               xrefs directly associated with themselves now.
-
-=cut
-
-
-sub add_DBLink{
-  my ($self,$value) = @_;
-
-  throw("add_DBLink is deprecated.  You probably want add_DBEntry.");
-
-  #  unless(defined $value && ref $value 
-  #	 && $value->isa('Bio::Annotation::DBLink') ) {
-  #    throw("This [$value] is not a DBLink");
-  #  }
-    
-  #  if( !defined $self->{'_db_link'} ) {
-  #    $self->{'_db_link'} = [];
-  #  }
-
-  #  push(@{$self->{'_db_link'}},$value);
-}
-
-
-=head2 temporary_id
-
- Function: DEPRECATED:  Use dbID or stable_id or something else instead
-
-=cut
-
-sub temporary_id {
-   my ($obj,$value) = @_;
-   deprecate( "I cant see what a temporary_id is good for, please use " .
-               "dbID or stableID or\n try without an id." );
-   if( defined $value) {
-      $obj->{'temporary_id'} = $value;
-    }
-    return $obj->{'temporary_id'};
-}
-
-
-=head2 chr_name
-
-  Description: DEPRECATED.  Use project, tranform, or transfer to obtain this
-               gene in another coord system.  Use $gene->slice->seq_region_name
-               to get the name of the underlying coord system. Or
-               $gene->slice->name().
-
-=cut
-
-sub chr_name {
-  my $self = shift;
-
-  deprecate( "Use project() to obtain other coordinate systems" );
-
-  my $gene_slice = $self->slice();
-  if( $gene_slice->coord_system()->name eq "chromosome" ) {
-    return $gene_slice->seq_region_name();
-  }
-
-  my $coords = $self->project( "toplevel" );
-
-  if( @$coords ) {
-    return $coords->[0]->[2]->seq_region_name();
-  }
-}
-
-
 =head2 fetch_coded_for_regulatory_factors
 
   Arg [1]    : none
@@ -1611,30 +1582,6 @@ sub fetch_coded_for_regulatory_factors {
 
   return $rfa->fetch_factors_coded_for_by_gene($self);
 
-}
-
-
-=head2 type
-
-  Description: DEPRECATED. Use biotype() instead.
-
-=cut
-
-sub type {
-  deprecate("Use biotype() instead");
-  biotype(@_);
-}
-
-
-=head2 confidence
-
-  Description: DEPRECATED. Use status() instead.
-
-=cut
-
-sub confidence {
-  deprecate("Use status() instead");
-  status(@_);
 }
 
 

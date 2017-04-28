@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -91,8 +92,6 @@ case the convention is to go list_XXXX, such as
 
 (note: this method is poorly named)
 
-=head1 METHODS
-
 =cut
 
 package Bio::EnsEMBL::DBSQL::BaseAdaptor;
@@ -100,7 +99,7 @@ require Exporter;
 use vars qw(@ISA @EXPORT);
 use strict;
 
-use Bio::EnsEMBL::Utils::Exception qw(throw);
+use Bio::EnsEMBL::Utils::Exception qw(throw deprecate);
 use Bio::EnsEMBL::Utils::Scalar qw(assert_ref assert_integer wrap_array);
 use DBI qw(:sql_types);
 use Data::Dumper;
@@ -673,7 +672,7 @@ sub _uncached_fetch_by_dbID{
   #Should only be one
   my ($feat) = @{$self->generic_fetch($constraint)};
 
-  return undef if(!$feat);
+  return if(!$feat);
 
   return $feat;
 }
@@ -1095,7 +1094,7 @@ sub _build_id_cache {
 sub dump_data {
   my $self = shift;
   my $data = shift;
-
+  deprecate('This method is deprecated and will be removed in e91. Please use the get_all_attributes() and add_attributes() methods of DnaDnaAlignFeature instead. In the more general case, many feature types allow attributes to be stored as well');
   my $dumper = Data::Dumper->new([$data]);
   $dumper->Indent(0);
   $dumper->Terse(1);
@@ -1108,9 +1107,56 @@ sub dump_data {
 sub get_dumped_data {
     my $self = shift;
     my $data = shift;
-
-    $data =~ s/\n|\r|\f|\\//g;
+    deprecate('This method is deprecated and will be removed in e91. Please use the get_all_attributes() and add_attributes() methods of DnaDnaAlignFeature instead. In the more general case, many feature types allow attributes to be stored as well');
+    $data =~ s/\n|\r|\f|(\\\\)//g;
     return eval ($data); ## no critic
+}
+
+#
+# Given a logic name and an existing constraint this will
+# add an analysis table constraint to the feature.  Note that if no
+# analysis_id exists in the columns of the primary table then no
+# constraint is added at all
+#
+sub _logic_name_to_constraint {
+  my $self = shift;
+  my $constraint = shift;
+  my $logic_name = shift;
+
+  return $constraint if(!$logic_name);
+
+  #make sure that an analysis_id exists in the primary table
+  my ($prim_tab) = $self->_tables();
+  my $prim_synonym = $prim_tab->[1];
+
+  my $found_analysis=0;
+  foreach my $col ($self->_columns) {
+    my ($syn,$col_name) = split(/\./,$col);
+    next if($syn ne $prim_synonym);
+    if($col_name eq 'analysis_id') {
+      $found_analysis = 1;
+      last;
+    }
+  }
+
+  if(!$found_analysis) {
+    warning("This feature is not associated with an analysis.\n" .
+            "Ignoring logic_name argument = [$logic_name].\n");
+    return $constraint;
+  }
+
+  my $aa = $self->db->get_AnalysisAdaptor();
+  my $an = $aa->fetch_by_logic_name($logic_name);
+
+  if ( !defined($an) ) {
+    return;
+  }
+
+  my $an_id = $an->dbID();
+
+  $constraint .= ' AND' if($constraint);
+  $constraint .= " ${prim_synonym}.analysis_id = $an_id";
+  return $constraint;
 }
 
 

@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -184,34 +185,6 @@ sub lod_score {
   $self->{'lod_score'} = shift if(@_);
   return $self->{'lod_score'};
 }
-
-
-
-=head2 chromosome
-
-  Description: DEPRECATED use chromosome_name() instead
-
-=cut
-
-sub chromosome {
-  my $self = shift;
-  deprecate('use chromosome_name instead');
-
-  if(@_) {
-    my $chr = shift;
-    if(ref($chr)) {
-      $self->chromosome_name($chr->seq_region_name());
-    } else {
-      $self->chromosome_name($chr);
-    }
-  }
-
-  #this object has no way to talk to db and thus no way to
-  #get a chromosome object
-  return $self->chromosome_name();
-}
-
-
 
 
 1;

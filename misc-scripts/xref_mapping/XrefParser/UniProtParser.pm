@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -233,7 +234,7 @@ sub create_xrefs {
     # set accession (and synonyms if more than one)
     # AC line may have primary accession and possibly several ; separated synonyms
     # May also be more than one AC line
-    my ($acc) = $_ =~ /(AC\s+.+)/s; # will match first AC line and everything else
+    my ($acc) = $_ =~ /(\nAC\s+.+)/s; # will match first AC line and everything else
 
     my @all_lines = split /\n/, $acc;
 
@@ -468,7 +469,7 @@ sub create_xrefs {
       	if($source =~ "ArrayExpress"){
       	    next;
       	}
-        if($source =~ "GenomeRNAi"){
+        if($source =~ "GenomeRNAi" || $source =~ "EPD"){
             next;
         }
         if($source =~ "Xenbase"){
@@ -480,7 +481,7 @@ sub create_xrefs {
         }
 # MIM xrefs are already imported separately, ignore from Uniprot
 # Also, Uniprot deals with proteins, not appropriate for gene level xrefs
-        if ($source =~ "MIM_GENE" || $source =~ "MIM_MORBID") {
+        if ($source =~ "MIM_GENE" || $source =~ "MIM_MORBID" || $source =~ "MIM") {
             next;
         }
 # If mapped to Ensembl, add as direct xref
@@ -536,40 +537,6 @@ sub create_xrefs {
             }
 	  }
 
-	  if($dep =~ /MIM/){
-	    $dep{ACCESSION} = $acc;
-	    if(defined($morbidmap{$acc}) and $extra[0] eq "phenotype."){
-	      $dep{SOURCE_NAME} = "MIM_MORBID";
-	      $dep{SOURCE_ID} = $dependent_sources{"MIM_MORBID"};
-	    }
-	    elsif(defined($genemap{$acc}) and $extra[0] eq "gene."){
-	      $dep{SOURCE_NAME} = "MIM_GENE";
-	      $dep{SOURCE_ID} = $dependent_sources{"MIM_GENE"};
-	    }
-	    elsif($extra[0] eq "gene+phenotype."){
-	      $dep{SOURCE_NAME} = "MIM_MORBID";
-	      $dep{SOURCE_ID} = $dependent_sources{"MIM_MORBID"};
-	      if(defined($morbidmap{$acc})){
-		$dependent_xrefs{ $dep{SOURCE_NAME} }++; # get count of depenent xrefs.
-		push @{$xref->{DEPENDENT_XREFS}}, \%dep; # array of hashrefs
-	      }
-	      my %dep2;
-	      $dep2{ACCESSION} = $acc;
-	      $dep2{LINKAGE_SOURCE_ID} = $xref->{SOURCE_ID};
-	      $dep2{SOURCE_NAME} = "MIM_GENE";
-	      $dep2{SOURCE_ID} = $dependent_sources{"MIM_GENE"};
-	      if(defined($genemap{$acc})){
-		$dependent_xrefs{ $dep2{SOURCE_NAME} }++; # get count of depenent xrefs.
-		push @{$xref->{DEPENDENT_XREFS}}, \%dep2; # array of hashrefs
-	      }
-	      next;
-	    }
-	    else{
-#	      print "missed $dep\n";
-	      next;
-	    }
-	  }
-
 #	  $dep{ACCESSION} = $acc;
 	  $dependent_xrefs{ $dep{SOURCE_NAME} }++; # get count of depenent xrefs.
 	  if(!defined($seen{$dep{SOURCE_NAME}.":".$dep{ACCESSION}})){
@@ -587,7 +554,6 @@ sub create_xrefs {
 	      $dep2{LABEL} = $protein_id;
 	      my ($prot_acc, $prot_version) = $protein_id =~ /([^.]+)\.([^.]+)/;
 	      $dep2{ACCESSION} = $prot_acc;
-	      $dep2{VERSION} = $prot_acc;
 	      $dependent_xrefs{ $dep2{SOURCE_NAME} }++; # get count of dependent xrefs.
 	      $seen{$source.":".$protein_id} = 1;
 	      push @{$xref->{DEPENDENT_XREFS}}, \%dep2; # array of hashrefs

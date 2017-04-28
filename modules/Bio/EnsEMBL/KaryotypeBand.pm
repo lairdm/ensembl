@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -220,23 +221,22 @@ sub display_id {
   return $self->{'name'} || '';
 }
 
+=head2 summary_as_hash
 
-=head2 chr_name
-
-  Description: DEPRECATED - use $kary_band->slice()->seq_region_name() instead
-
+  Example       : $karyotype_band_summary = $band->summary_as_hash();
+  Description   : Extends Feature::summary_as_hash
+                  Retrieves a summary of this Karyotype object.
+                    
+  Returns       : hashref of arrays of descriptive strings
+  Status        : Intended for internal use
 =cut
 
-sub chr_name {
+sub summary_as_hash {
   my $self = shift;
-
-  deprecate('Use $kary_band->slice()->seq_region_name() instead.');
-  if(!$self->slice) {
-    warning('KaryotypeBand does not have Slice - cannot get seq_region_name.');
-    return '';
-  }
-
-  return $self->slice->seq_region_name();
+  my $summary_ref = $self->SUPER::summary_as_hash;
+  $summary_ref->{'stain'} = $self->stain;
+  
+  return $summary_ref;
 }
 
 

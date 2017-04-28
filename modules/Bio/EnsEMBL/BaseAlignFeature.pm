@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -384,7 +385,7 @@ sub transform {
     my @segments = @{ $self->project(@_) };
 
     if ( !@segments ) {
-      return undef;
+      return;
     }
 
     my @ungapped;
@@ -395,7 +396,7 @@ sub transform {
       } else {
         warning( "Failed to transform alignment feature; "
             . "ungapped component could not be transformed" );
-        return undef;
+        return;
       }
     }
 
@@ -403,7 +404,7 @@ sub transform {
 
     if ($@) {
       warning($@);
-      return undef;
+      return;
     }
   } ## end if ( !defined($new_feature...))
 
@@ -603,7 +604,7 @@ sub _parse_features {
 
   my $hstrand     = $f[0]->hstrand;
   my $slice       = $f[0]->slice();
-  my $hslice       = $f[0]->hslice();
+  my $hslice      = $f[0]->hslice();
   my $name        = $slice ? $slice->name() : undef;
   my $hname       = $f[0]->hseqname;
   my $score       = $f[0]->score;

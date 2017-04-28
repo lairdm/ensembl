@@ -1,4 +1,4 @@
-1	\N	schema_version	82
+1	\N	schema_version	89
 2	1	assembly.default	NCBI34
 3	1	species.taxonomy_id	9606
 26	1	species.classification	Homo sapiens
@@ -67,3 +67,21 @@
 121	\N	patch	patch_81_82_a.sql|schema_version
 122	\N	patch	patch_81_82_b.sql|xref_width
 123	\N	patch	patch_81_82_c.sql|seq_synonym_key
+124	\N	patch	patch_82_83_a.sql|schema_version
+125	\N	patch	patch_83_84_a.sql|schema_version
+126	\N	patch	patch_83_84_b.sql|xref.version_default
+127	\N	patch	patch_83_84_c.sql|protein_feature_unique
+128	\N	patch	patch_83_84_d.sql|longer_synonym
+129	\N	patch	patch_83_84_e.sql|nullable_versions
+130	\N	patch	patch_84_85_a.sql|schema_version
+131	\N	patch	patch_84_85_b.sql|remove_duplicated_key
+132	\N	patch	patch_85_86_a.sql|schema_version
+133	\N	patch	patch_85_86_b.sql|add dna_align_feature_attrib table
+134	\N	patch	patch_85_86_c.sql|meta_case_insensitive
+135	\N	patch	patch_86_87_a.sql|schema_version
+136	\N	patch	patch_86_87_b.sql|meta_value_NOT_NULL
+137	\N	patch	patch_86_87_c.sql|datetime_default_NULL
+138	\N	patch	patch_87_88_a.sql|schema_version
+139	\N	patch	patch_87_88_b.sql|seq_region_name_255
+140	\N	patch	patch_87_88_c.sql|protein_featue_uniqueness
+141	\N	patch	patch_88_89_a.sql|schema_version

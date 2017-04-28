@@ -1,4 +1,5 @@
 -- Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+-- Copyright [2016-2017] EMBL-European Bioinformatics Institute
 -- 
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -224,11 +225,10 @@ CREATE TABLE genome_statistics(
   value                    BIGINT(11) UNSIGNED DEFAULT '0' NOT NULL,
   species_id               INT UNSIGNED DEFAULT 1,
   attrib_type_id           INT(10) UNSIGNED DEFAULT NULL,
-  timestamp                DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
+  timestamp                DATETIME DEFAULT NULL,
 
   PRIMARY KEY (genome_statistics_id),
-  UNIQUE KEY stats_uniq(statistic, attrib_type_id, species_id),
-  KEY stats_idx (statistic, attrib_type_id, species_id)
+  UNIQUE KEY stats_uniq(statistic, attrib_type_id, species_id)
 
 ) COLLATE=latin1_swedish_ci ENGINE=MyISAM;
 
@@ -290,7 +290,7 @@ CREATE TABLE IF NOT EXISTS meta (
   meta_id                     INT NOT NULL AUTO_INCREMENT,
   species_id                  INT UNSIGNED DEFAULT 1,
   meta_key                    VARCHAR(40) NOT NULL,
-  meta_value                  VARCHAR(255) BINARY,
+  meta_value                  VARCHAR(255) NOT NULL,
 
   PRIMARY   KEY (meta_id),
   UNIQUE    KEY species_key_value_idx (species_id, meta_key, meta_value),
@@ -302,18 +302,13 @@ CREATE TABLE IF NOT EXISTS meta (
 # Add schema type and schema version to the meta table.
 INSERT INTO meta (species_id, meta_key, meta_value) VALUES
   (NULL, 'schema_type',     'core'),
-  (NULL, 'schema_version',  '82');
+  (NULL, 'schema_version',  '89');
 
 # Patches included in this schema file:
 # NOTE: At start of release cycle, remove patch entries from last release.
 # NOTE: Avoid line-breaks in values.
 INSERT INTO meta (species_id, meta_key, meta_value)
-  VALUES (NULL, 'patch', 'patch_81_82_a.sql|schema_version');
-INSERT INTO meta (species_id, meta_key, meta_value)
-  VALUES (NULL, 'patch', 'patch_81_82_b.sql|xref_width');
-INSERT INTO meta (species_id, meta_key, meta_value)
-  VALUES (NULL, 'patch', 'patch_81_82_c.sql|seq_synonym_key');
-
+  VALUES (NULL, 'patch', 'patch_88_89_a.sql|schema_version');
 
 /**
 @table meta_coord
@@ -360,7 +355,7 @@ The relationship between contigs and clones is stored in the assembly table. The
 CREATE TABLE seq_region (
 
   seq_region_id               INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-  name                        VARCHAR(40) NOT NULL,
+  name                        VARCHAR(255) NOT NULL,
   coord_system_id             INT(10) UNSIGNED NOT NULL,
   length                      INT(10) UNSIGNED NOT NULL,
 
@@ -387,7 +382,7 @@ CREATE TABLE seq_region_synonym (
 
   seq_region_synonym_id       INT UNSIGNED NOT NULL  AUTO_INCREMENT,
   seq_region_id               INT(10) UNSIGNED NOT NULL,
-  synonym                     VARCHAR(50) NOT NULL,
+  synonym                     VARCHAR(250) NOT NULL,
   external_db_id              INTEGER UNSIGNED,
 
   PRIMARY KEY (seq_region_synonym_id),
@@ -526,7 +521,7 @@ The module column tells the pipeline which Perl module does the whole analysis, 
 CREATE TABLE IF NOT EXISTS analysis (
 
   analysis_id                 SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  created                     datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+  created                     datetime DEFAULT NULL,
   logic_name                  VARCHAR(128) NOT NULL,
   db                          VARCHAR(120),
   db_version                  VARCHAR(40),
@@ -659,6 +654,31 @@ CREATE TABLE dna_align_feature (
 
 
 /**
+@table dna_align_feature_attrib
+@desc Enables storage of attributes that relate to DNA sequence alignments.
+
+@column dna_align_feature_id        Foreign key references to the @link dna_align_feature table.
+@column attrib_type_id              Foreign key references to the @link attrib_type table.
+@column value                       Attribute value.
+
+@see dna_align_feature
+*/
+
+CREATE TABLE dna_align_feature_attrib (
+
+  dna_align_feature_id        INT(10) UNSIGNED NOT NULL,
+  attrib_type_id              SMALLINT(5) UNSIGNED NOT NULL,
+  value                       TEXT NOT NULL,
+
+  UNIQUE KEY dna_align_feature_attribx (dna_align_feature_id, attrib_type_id, value(500)),
+  KEY dna_align_feature_idx (dna_align_feature_id),
+  KEY type_val_idx (attrib_type_id, value(40)),
+  KEY val_only_idx (value(40))
+
+) COLLATE=latin1_swedish_ci ENGINE=MyISAM;
+
+
+/**
 @table exon
 @desc Stores data about exons. Associated with transcripts via exon_transcript. Allows access to contigs seq_regions.
 Note seq_region_start is always less that seq_region_end, i.e. when the exon is on the other strand the seq_region_start is specifying the 3prime end of the exon.
@@ -697,9 +717,9 @@ CREATE TABLE exon (
   is_constitutive             BOOLEAN NOT NULL DEFAULT 0,
 
   stable_id                   VARCHAR(128) DEFAULT NULL,
-  version                     SMALLINT UNSIGNED NOT NULL DEFAULT 1,
-  created_date                DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
-  modified_date               DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
+  version                     SMALLINT UNSIGNED DEFAULT NULL,
+  created_date                DATETIME DEFAULT NULL,
+  modified_date               DATETIME DEFAULT NULL,
 
   PRIMARY KEY (exon_id),
   KEY seq_region_idx (seq_region_id, seq_region_start),
@@ -778,9 +798,9 @@ CREATE TABLE gene (
   is_current                  BOOLEAN NOT NULL DEFAULT 1,
   canonical_transcript_id     INT(10) UNSIGNED NOT NULL,
   stable_id                   VARCHAR(128) DEFAULT NULL,
-  version                     SMALLINT UNSIGNED NOT NULL DEFAULT 1,
-  created_date                DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
-  modified_date               DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
+  version                     SMALLINT UNSIGNED DEFAULT NULL,
+  created_date                DATETIME DEFAULT NULL,
+  modified_date               DATETIME DEFAULT NULL,
 
   PRIMARY KEY (gene_id),
   KEY seq_region_idx (seq_region_id, seq_region_start),
@@ -912,6 +932,7 @@ CREATE TABLE protein_feature (
   external_data               TEXT,
   hit_description             TEXT,
 
+  UNIQUE KEY aln_idx (translation_id,hit_name,seq_start,seq_end,hit_start,hit_end,analysis_id),
   PRIMARY KEY (protein_feature_id),
   KEY translation_idx (translation_id),
   KEY hitname_idx (hit_name),
@@ -989,9 +1010,9 @@ CREATE TABLE transcript (
   is_current                  BOOLEAN NOT NULL DEFAULT 1,
   canonical_translation_id    INT(10) UNSIGNED,
   stable_id                   VARCHAR(128) DEFAULT NULL,
-  version                     SMALLINT UNSIGNED NOT NULL DEFAULT 1,
-  created_date                DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
-  modified_date               DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
+  version                     SMALLINT UNSIGNED DEFAULT NULL,
+  created_date                DATETIME DEFAULT NULL,
+  modified_date               DATETIME DEFAULT NULL,
 
   PRIMARY KEY (transcript_id),
   KEY seq_region_idx (seq_region_id, seq_region_start),
@@ -1081,9 +1102,9 @@ CREATE TABLE translation (
   seq_end                     INT(10) NOT NULL,       # relative to exon start
   end_exon_id                 INT(10) UNSIGNED NOT NULL,
   stable_id                   VARCHAR(128) DEFAULT NULL,
-  version                     SMALLINT UNSIGNED NOT NULL DEFAULT 1,
-  created_date                DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
-  modified_date               DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
+  version                     SMALLINT UNSIGNED DEFAULT NULL,
+  created_date                DATETIME DEFAULT NULL,
+  modified_date               DATETIME DEFAULT NULL,
 
   PRIMARY KEY (translation_id),
   KEY transcript_idx (transcript_id),
@@ -2344,7 +2365,7 @@ CREATE TABLE xref (
    external_db_id             INTEGER UNSIGNED NOT NULL,
    dbprimary_acc              VARCHAR(512) NOT NULL,
    display_label              VARCHAR(512) NOT NULL,
-   version                    VARCHAR(10) DEFAULT '0' NOT NULL,
+   version                    VARCHAR(10) DEFAULT NULL,
    description                TEXT,
    info_type                  ENUM( 'NONE', 'PROJECTION', 'MISC', 'DEPENDENT',
                                     'DIRECT', 'SEQUENCE_MATCH',
@@ -2396,9 +2417,9 @@ CREATE TABLE operon (
   display_label             VARCHAR(255) DEFAULT NULL,
   analysis_id               SMALLINT UNSIGNED NOT NULL,
   stable_id                 VARCHAR(128) DEFAULT NULL,
-  version                   SMALLINT UNSIGNED NOT NULL DEFAULT 1,
-  created_date              DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
-  modified_date             DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
+  version                   SMALLINT UNSIGNED DEFAULT NULL,
+  created_date              DATETIME DEFAULT NULL,
+  modified_date             DATETIME DEFAULT NULL,
 
   PRIMARY KEY (operon_id),
   KEY seq_region_idx (seq_region_id, seq_region_start),
@@ -2440,9 +2461,9 @@ CREATE TABLE operon_transcript (
   display_label             VARCHAR(255) DEFAULT NULL,
   analysis_id               SMALLINT UNSIGNED NOT NULL,
   stable_id                 VARCHAR(128) DEFAULT NULL,
-  version                   SMALLINT UNSIGNED NOT NULL DEFAULT 1,
-  created_date              DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
-  modified_date             DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
+  version                   SMALLINT UNSIGNED DEFAULT NULL,
+  created_date              DATETIME DEFAULT NULL,
+  modified_date             DATETIME DEFAULT NULL,
 
   PRIMARY KEY (operon_transcript_id),
   KEY operon_idx (operon_id),

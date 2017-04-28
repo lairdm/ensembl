@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -294,34 +295,6 @@ sub fetch_all_by_hit_name_unversioned {
 
   return $self->generic_fetch($constraint);
 }
-
-
-
-=head2 fetch_all_by_RawContig_and_pid
-
-  Description: DEPRECATED use fetch_all_by_Slice_and_pid instead
-
-=cut
-
-sub fetch_all_by_RawContig_and_pid {
-  my($self, $contig, $pid, $logic_name) = @_;
-
-  my $constraint;
-
-  #get the primary table alias
-  my @tabs = $self->_tables;
-  my $alias = $tabs[0]->[1];
-
-  if(defined $pid) {
-    $constraint = "${alias}.perc_ident > $pid";
-  }
-
-  return $self->fetch_all_by_RawContig_constraint($contig, 
-						  $constraint, 
-						  $logic_name);
-}
-
-
 
 
 ##implemented by subclasses:

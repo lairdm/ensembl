@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -869,7 +870,7 @@ sub get_ins_xref_sth{
   my $self= shift;
 
   if(!defined($self->{'_ins_xref_sth'})){
-    my $sql = "insert into xref (xref_id, source_id, accession, label, version, species_id, info_type, info_text, description) values (?, ?, ?, ?,  0, ".$self->species_id.", 'MISC', ?, ? )";
+    my $sql = "insert ignore into xref (xref_id, source_id, accession, label, version, species_id, info_type, info_text, description) values (?, ?, ?, ?,  0, ".$self->species_id.", 'MISC', ?, ? )";
     print "_ins_xref sql is:-\n$sql\n";
     $self->{'_ins_xref_sth'} = $self->xref->dbc->prepare($sql); 
   }

@@ -1,4 +1,5 @@
 # Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+# Copyright [2016-2017] EMBL-European Bioinformatics Institute
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +17,7 @@
 use strict;
 use warnings;
 use Test::More;
+use Test::Warnings;
 
 my $loaded = 0;
 END {print "not ok 1\n" unless $loaded;}
@@ -54,7 +56,7 @@ $analysis->description( "some funny description" );
 $analysis->display_label( "and a label" );
 $analysis->displayable( 1 );
 $analysis->created( "2005-10-28 10:28:29");
-$analysis->web_data("blah");
+$analysis->web_data({thing => 'blah'});
 
 ok($analysis);
 
@@ -69,6 +71,7 @@ my $analysis_out = $analysis_ad->fetch_by_logic_name('dummy_analysis');
 ok($analysis_out);
 
 is($analysis_out->db, 'dummy', "Db matches");
+is($analysis_out->web_data->{thing}, 'blah', "Web data correctly extracted from DB via dirty eval");
 
 ok( check_methods( $analysis_out, "db", "db_file", "dbID", "compare",
 		   "logic_name", "parameters", "gff_source", "gff_feature",
@@ -91,7 +94,7 @@ is($analysis_updated->logic_name(), "new_dummy", "Logic name is correct");
 is($analysis_updated->description(), "new description", "Description is correct");
 is($analysis_updated->display_label(), "new label", "Label is correct");
 is($analysis_updated->displayable(), 0, "Displayable is correct");
-is($analysis_updated->web_data(), "blahblah", "Web data is correct");
+is($analysis_updated->web_data(), "blahblah", "Web data is correct"); # Note this does not test the eval output, just the set value.
 
 # now try updating analysis that has no existing description
 $analysis = Bio::EnsEMBL::Analysis->new();

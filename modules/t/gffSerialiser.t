@@ -1,4 +1,5 @@
 # Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+# Copyright [2016-2017] EMBL-European Bioinformatics Institute
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,6 +48,7 @@ package main;
 use strict;
 use warnings;
 use Test::More;
+use Test::Warnings;
 use Bio::EnsEMBL::Test::MultiTestDB;
 use Bio::EnsEMBL::Utils::IO::GFFSerializer;
 use Bio::EnsEMBL::Feature;
@@ -74,7 +76,7 @@ OUT
   #Have to do this outside of the HERETO thanks to tabs
   $expected .= join("\t", 
     qw/20  ensembl region 30274334  30300924  . + ./,
-    'ID=gene:ENSG00000131044;Name=C20orf125;biotype=protein_coding;gene_id=ENSG00000131044;logic_name=ensembl;version=1' 
+    'ID=gene:ENSG00000131044;Name=C20orf125;biotype=protein_coding;gene_id=ENSG00000131044;logic_name=ensembl;projection_parent_gene=ENSG_PARENT_GENE;version=1'
   );
   $expected .= "\n";
 
@@ -120,7 +122,7 @@ OUT
   #Have to do this outside of the HERETO thanks to tabs
   $expected .= join("\t", 
     qw/20  wibble region 30274334  30300924  . + ./,
-    'ID=gene:ENSG00000131044;Name=C20orf125;biotype=protein_coding;description=DJ310O13.1.2 (NOVEL PROTEIN SIMILAR DROSOPHILA PROTEIN CG7474%2C ISOFORM 2 ) (FRAGMENT). [Source:SPTREMBL%3BAcc:Q9BR18];gene_id=ENSG00000131044;logic_name=ensembl;version=1' 
+    'ID=gene:ENSG00000131044;Name=C20orf125;biotype=protein_coding;description=DJ310O13.1.2 (NOVEL PROTEIN SIMILAR DROSOPHILA PROTEIN CG7474%2C ISOFORM 2 ) (FRAGMENT). [Source:SPTREMBL%3BAcc:Q9BR18];gene_id=ENSG00000131044;logic_name=ensembl;projection_parent_gene=ENSG_PARENT_GENE;version=1'
   );
   $expected .= "\n";
   assert_gff3($gene, $expected, 'Gene with custom source serialises to GFF3 as expected. Source is wibble');
@@ -130,7 +132,7 @@ OUT
 OUT
   $expected .= join("\t", 
   qw/20      ensembl region  30274334        30298904        .       +       ./,
-  'ID=transcript:ENST00000310998;Name=C20orf125;Parent=gene:ENSG00000131044;biotype=protein_coding;logic_name=ensembl;transcript_id=ENST00000310998;version=1'
+  'ID=transcript:ENST00000310998;Name=C20orf125;Parent=gene:ENSG00000131044;biotype=protein_coding;logic_name=ensembl;projection_parent_transcript=ENSG_PARENT_TRANSCRIPT;transcript_id=ENST00000310998;version=1'
   );
   $expected .= "\n";
   assert_gff3($gene->canonical_transcript(), $expected, 'Transcript with custom source serialises to GFF3 as expected. Source is wibble');
@@ -204,7 +206,7 @@ OUT
   #Have to do this outside of the HERETO thanks to tabs
   $expected .= join("\t", 
     qw/20  ensembl region 30274334  30300924  . + ./,
-    'ID=gene:ENSG00000131044;Name=C20orf125;Dbxref=bibble,fibble;Ontology_term=GO:0001612;biotype=protein_coding;description=DJ310O13.1.2 (NOVEL PROTEIN SIMILAR DROSOPHILA PROTEIN CG7474%2C ISOFORM 2 ) (FRAGMENT). [Source:SPTREMBL%3BAcc:Q9BR18];gene_id=ENSG00000131044;logic_name=ensembl;version=1' 
+    'ID=gene:ENSG00000131044;Name=C20orf125;Dbxref=bibble,fibble;Ontology_term=GO:0001612;biotype=protein_coding;description=DJ310O13.1.2 (NOVEL PROTEIN SIMILAR DROSOPHILA PROTEIN CG7474%2C ISOFORM 2 ) (FRAGMENT). [Source:SPTREMBL%3BAcc:Q9BR18];gene_id=ENSG00000131044;logic_name=ensembl;projection_parent_gene=ENSG_PARENT_GENE;version=1'
   );
   $expected .= "\n";
 

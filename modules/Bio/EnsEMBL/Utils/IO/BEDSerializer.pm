@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,7 +49,7 @@ use base qw(Bio::EnsEMBL::Utils::IO::FeatureSerializer);
     Arg [2]    : Default source of the features. Defaults to .
     Arg [3]    : RGB colour to emit. Defaults to black (0,0,0)
 
-    Returntype : Bio::EnsEMBL::Utils::IO::GFFSerializer
+    Returntype : Bio::EnsEMBL::Utils::IO::BEDSerializer
 
 =cut
 

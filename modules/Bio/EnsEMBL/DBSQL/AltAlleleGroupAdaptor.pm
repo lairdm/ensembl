@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -71,20 +72,6 @@ use Bio::EnsEMBL::AltAlleleGroup;
 use Bio::EnsEMBL::Utils::Exception qw/throw deprecate warning/;
 use Bio::EnsEMBL::Utils::Scalar qw/assert_ref/;
 use DBI qw( :sql_types );
-
-=head2 fetch_all_Groups
-
-  Arg[1]      : (optional) String - type of group
-  Description : DEPRECATED. Please use fetch_all()
-  Returntype  : ArrayRef of Bio::EnsEMBL::AltAlleleGroup
-
-=cut
-
-sub fetch_all_Groups {
-    my ($self, $type) = @_;
-    deprecate('Please use fetch_all()');
-    return $self->fetch_all($type);
-}
 
 =head2 fetch_all
 
@@ -175,35 +162,6 @@ sub fetch_all {
     return \@group_list;
 }
 
-=head2 fetch_all_Groups_by_type
-
-  Arg[1]      : String - type of group
-  Description : DEPRECATED. Please use fetch_all()
-  Returntype  : ArrayRef of Bio::EnsEMBL::AltAlleleGroup
-
-=cut
-
-sub fetch_all_Groups_by_type {
-    my ($self, $type) = @_;
-    deprecate('Please use fetch_all()');
-    my $group_list = $self->fetch_all($type);
-    return $group_list;
-}
-
-=head2 fetch_Group_by_id
-
-  Arg[1]      : AltAlleleGroup dbID.
-  Description : DEPRECATED. Please use fetch_by_dbID
-  Returntype  : Bio::EnsEMBL::AltAlleleGroup
-
-=cut
-
-sub fetch_Group_by_id {
-    my ($self, $group_id) = @_;
-    deprecate('Please use fetch_by_dbID()');
-    return $self->fetch_by_dbID($group_id);
-}
-
 =head2 fetch_by_dbID
 
   Arg[1]      : AltAlleleGroup dbID.
@@ -259,21 +217,6 @@ sub fetch_by_dbID {
         return $aag;
     }
     return;
-}
-
-=head2 fetch_Group_by_Gene_dbID
-
-  Arg[1]      : Integer Gene ID of the member to query by
-  Description : DEPRECATED. Please use fetch_by_gene_id 
-  Returntype  : Bio::EnsEMBL::AltAlleleGroup
-
-=cut
-
-
-sub fetch_Group_by_Gene_dbID {
-    my ($self, $gene_id) = @_;
-    deprecate('Please use fetch_by_gene_id()');
-    return $self->fetch_by_gene_id($gene_id);
 }
 
 =head2 fetch_by_gene_id

@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -106,24 +107,6 @@ sub get_base_path {
   my $meta_base_path = $self->db()->get_MetaContainer()->single_value_by_key('data_file.base_path', 1);
   return $meta_base_path if defined $meta_base_path;
   throw "No base path discovered. Either provide a path, set a global using global_base_path() or specify 'data_file.base_path' in meta";
-}
-
-=head2 DataFile_to_extension
-
-  Deprecated
-  Arg[1]      : Bio::EnsEMBL::DataFile
-  Example     : my $ext = $dfa->DataFile_to_extension($bam_df);
-  Description : Returns an expected extension for the given DataFile type
-  Returntype  : Scalar of the expected file extension
-  Exceptions  : Raised if the given file type is not understood
-
-=cut
-
-sub DataFile_to_extension {
-  my ($self, $df) = @_;
-  deprecate("Use DataFile_to_extensions() instead");
-  my $extensions = $self->DataFile_to_extensions($df);
-  return $extensions->[0];
 }
 
 =head2 DataFile_to_extensions

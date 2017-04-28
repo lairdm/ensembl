@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -118,9 +119,9 @@ sub _columns {
             daf.score
             daf.external_db_id
             daf.hcoverage
-	    daf.external_data
-	    exdb.db_name
-	    exdb.db_display_name);
+            daf.external_data
+            exdb.db_name
+            exdb.db_display_name);
 }
 
 
@@ -161,23 +162,18 @@ sub store {
                              hit_start, hit_end, hit_strand, hit_name,
                              cigar_line, analysis_id, score, evalue,
                              perc_ident, external_db_id, hcoverage, external_data)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"    # 16 arguments
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)"    # 16 arguments, external data is being removed
   );
 
 FEATURE:
   foreach my $feat (@feats) {
     if ( !ref $feat || !$feat->isa("Bio::EnsEMBL::DnaDnaAlignFeature") )
     {
-      throw("feature must be a Bio::EnsEMBL::DnaDnaAlignFeature,"
-          . " not a ["
-          . ref($feat)
-          . "]." );
+      throw("feature must be a Bio::EnsEMBL::DnaDnaAlignFeature, not a [". ref($feat). "]." );
     }
 
     if ( $feat->is_stored($db) ) {
-      warning( "DnaDnaAlignFeature ["
-          . $feat->dbID()
-          . "] is already stored in this database." );
+      warning( "DnaDnaAlignFeature [".$feat->dbID()."] is already stored in this database." );
       next FEATURE;
     }
 
@@ -227,14 +223,14 @@ FEATURE:
     $sth->bind_param( 13, $feat->percent_id,     SQL_FLOAT );
     $sth->bind_param( 14, $feat->external_db_id, SQL_INTEGER );
     $sth->bind_param( 15, $feat->hcoverage,      SQL_DOUBLE );
-    # Eagle change: also store the extra data, if available
-    my $extra_data;
-    $extra_data = $self->dump_data($feat->extra_data()) if ($feat->extra_data());
-    $sth->bind_param( 16, $extra_data,  SQL_LONGVARCHAR );
-
     $sth->execute();
 
     my $dbId = $self->last_insert_id("${tablename}_id", undef, $tablename);
+
+    # store attributes if there are any
+    my $attr_adaptor = $db->get_AttributeAdaptor();
+    $attr_adaptor->store_on_DnaDnaAlignFeature($dbId, $feat->get_all_Attributes);
+
     $original->dbID( $dbId );
     $original->adaptor($self);
   } ## end foreach my $feat (@feats)
@@ -243,118 +239,53 @@ FEATURE:
 } ## end sub store
 
 
-sub save {
-  my ($self, $features) = @_;
+=head2 remove
 
-  my @feats = @$features;
-  throw("Must call store with features") if( scalar(@feats) == 0 );
+  Arg [1]    : A feature $feature 
+  Example    : $feature_adaptor->remove($feature);
+  Description: This removes a feature from the database.  The table the
+               feature is removed from is defined by the abstract method
+               _tablename, and the primary key of the table is assumed
+               to be _tablename() . '_id'.  The feature argument must 
+               be an object implementing the dbID method, and for the
+               feature to be removed from the database a dbID value must
+               be returned.
+  Returntype : none
+  Exceptions : thrown if $feature arg does not implement dbID(), or if
+               $feature->dbID is not a true value
+  Caller     : general
+  Status     : Stable
+
+=cut
+
+
+sub remove {
+  my ($self, $feature) = @_;
+
+  if(!$feature || !ref($feature) || !$feature->isa('Bio::EnsEMBL::Feature')) {
+    throw('Feature argument is required');
+  }
+
+  if(!$feature->is_stored($self->db)) {
+    throw("This feature is not stored in this database");
+  }
 
   my @tabs = $self->_tables;
-  my ($tablename) = @{$tabs[0]};
+  my ($table) = @{$tabs[0]};
 
-  my $db = $self->db();
-  my $analysis_adaptor = $db->get_AnalysisAdaptor();
+  my $sth = $self->prepare("DELETE FROM $table WHERE ${table}_id = ?");
+  $sth->bind_param(1,$feature->dbID,SQL_INTEGER);
+  $sth->execute();
 
-  my $sql = qq{INSERT INTO $tablename (seq_region_id, seq_region_start, seq_region_end, seq_region_strand, hit_start, hit_end, hit_strand, hit_name, cigar_line, analysis_id, score, evalue, perc_ident, external_db_id, hcoverage, external_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)};
+  # remove the attributes associated with this feature
+  my $attrib_adaptor = $self->db->get_AttributeAdaptor;
+  $attrib_adaptor->remove_from_DnaDnaAlignFeature($feature);
 
-  my %analyses = ();
+  #unset the feature dbID ad adaptor
+  $feature->dbID(undef);
+  $feature->adaptor(undef);
 
-  my $sth = $self->prepare($sql);
-     
- FEATURE: foreach my $feat ( @feats ) {
-    if( !ref $feat || !$feat->isa("Bio::EnsEMBL::DnaDnaAlignFeature") ) {
-      throw("feature must be a Bio::EnsEMBL::DnaDnaAlignFeature,"
-            . " not a [".ref($feat)."].");
-    }
-
-    if($feat->is_stored($db)) {
-      warning("DnaDnaAlignFeature [".$feat->dbID."] is already stored" .
-              " in this database.");
-      next FEATURE;
-    }
-
-    my $hstart  = $feat->hstart || 0; # defined $feat->hstart  ? $feat->hstart : $feat->start ;
-    my $hend    = $feat->hend   || 0; # defined $feat->hend    ? $feat->hend : $feat->end;
-    my $hstrand = $feat->hstrand|| 0; # defined $feat->hstrand ? $feat->hstrand : $feat->strand;
-    if( $hstart && $hend ) {
-      if($hend < $hstart) {
-        throw("Invalid Feature start/end [$hstart/$hend]. Start must be less than or equal to end.");
-      }
-    }
-    my $cigar_string = $feat->cigar_string();
-    if(!$cigar_string) {
-      $cigar_string = $feat->length() . 'M';
-      warning("DnaDnaAlignFeature does not define a cigar_string.\n" .
-              "Assuming ungapped block with cigar_line=$cigar_string .");
-    }
-
-    my $hseqname = $feat->hseqname();
-    if(!$hseqname) {
-      throw("DnaDnaAlignFeature must define an hseqname.");
-    }
-
-    if(!defined($feat->analysis)) {
-      throw("An analysis must be attached to the features to be stored.");
-    }
-
-    #store the analysis if it has not been stored yet
-    if(!$feat->analysis->is_stored($db)) {
-      $analysis_adaptor->store($feat->analysis());
-    }
-
-    $analyses{ $feat->analysis->dbID }++;
-
-    my $original = $feat;
-    my $seq_region_id;
-    ($feat, $seq_region_id) = $self->_pre_store_userdata($feat);
-
-    my $extra_data = $feat->extra_data ? $self->dump_data($feat->extra_data) : '';
-
-    $sth->bind_param(1,$seq_region_id,SQL_INTEGER);
-    $sth->bind_param(2,$feat->start,SQL_INTEGER);
-    $sth->bind_param(3,$feat->end,SQL_INTEGER);
-    $sth->bind_param(4,$feat->strand,SQL_TINYINT);
-    $sth->bind_param(5,$hstart,SQL_INTEGER);
-    $sth->bind_param(6,$hend,SQL_INTEGER);
-    $sth->bind_param(7,$hstrand,SQL_TINYINT);
-    $sth->bind_param(8,$hseqname,SQL_VARCHAR);
-    $sth->bind_param(9,$cigar_string,SQL_LONGVARCHAR);
-    $sth->bind_param(10,$feat->analysis->dbID,SQL_INTEGER);
-    $sth->bind_param(11,$feat->score,SQL_DOUBLE);
-#    $sth->bind_param(11,$feat->score); # if the above statement does not work it means you need to upgrade DBD::mysql, meantime you can replace it with this line
-    $sth->bind_param(12,$feat->p_value,SQL_DOUBLE);
-    $sth->bind_param(13,$feat->percent_id,SQL_FLOAT);
-    $sth->bind_param(14,$feat->external_db_id,SQL_INTEGER);
-    $sth->bind_param(15,$feat->hcoverage,SQL_DOUBLE);
-    $sth->bind_param(16,$extra_data,SQL_LONGVARCHAR);
-
-
-    $sth->execute();
-    $original->dbID($self->last_insert_id("${tablename}_id", undef, $tablename));
-    $original->adaptor($self);
-  }
-
-  $sth->finish();
-
-## js5 hack to update meta_coord table... 
-  if( keys %analyses ) {
-
-    my $sth = $self->prepare( 'select sr.coord_system_id, max(daf.seq_region_end-daf.seq_region_start) from seq_region as sr, dna_align_feature as daf where daf.seq_region_id=sr.seq_region_id and analysis_id in ('.join(',',keys %analyses).') group by coord_system_id' );
-    $sth->execute;
-
-    foreach( @{ $sth->fetchall_arrayref } ) {
-      my $sth2 = $self->prepare( qq(insert ignore into meta_coord values("dna_align_feature",$_->[0],$_->[1])) );
-      $sth2->execute;
-      $sth2->finish;
-
-      $sth2 = $self->prepare( qq(update meta_coord set max_length = $_->[1] where coord_system_id = $_->[0] and table_name="dna_align_feature" and max_length < $_->[1]) );
-      $sth2->execute;
-      $sth2->finish;
-    }
-
-    $sth->finish;
-  }
-
+  return;
 }
 
 
@@ -577,9 +508,6 @@ sub _objs_from_sth {
       $slice = $dest_slice;
     }
 
-    # Inlining the following in the hash causes major issues with 5.16 and messes up the hash 
-    my $evalled_extra_data = $extra_data ? $self->get_dumped_data($extra_data) : '';
-
     # Finally, create the new DnaAlignFeature.
     push( @features,
           $self->_create_feature_fast(
@@ -601,7 +529,7 @@ sub _objs_from_sth {
                'dbID'            => $dna_align_feature_id,
                'external_db_id'  => $external_db_id,
                'hcoverage'       => $hcoverage,
-               'extra_data'      => $evalled_extra_data,
+               'extra_data'      => undef,
                'dbname'          => $external_db_name,
                'db_display_name' => $external_display_db_name
              } ) );

@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -405,10 +406,7 @@ sub process_file {
 	$pr_user = $species_hash{'pr_user'};
 	$pr_dbname = $species_hash{'pr_dbname'};
 	if(defined($species_hash{'pr_port'})){
-	    $pr_port = $species_hash{'port'};
-	}
-	else{
-	    $pr_port = '';
+	    $pr_port = $species_hash{'pr_port'};
 	}
 
 	my $previous_core = new XrefMapper::db(-host => $pr_host,
@@ -720,6 +718,22 @@ EOF
 EOF2
     
   $result = $xref_dbc->do($sql);  
+
+# Special tidying up for transcripts without translation
+# The resulting object_xref does not have an ensembl_id to map to
+
+    $sql=(<<"EOF4");
+  DELETE object_xref, identity_xref, go_xref
+    FROM object_xref, xref, source, identity_xref, go_xref
+      WHERE object_xref.ensembl_object_type = "$to" AND
+        identity_xref.object_xref_id = object_xref.object_xref_id AND
+        xref.xref_id = object_xref.xref_id AND
+          go_xref.object_xref_id = object_xref.object_xref_id AND
+          xref.source_id = source.source_id AND
+            object_xref.ensembl_id = 0 AND
+              object_xref.ox_status = "DUMP_OUT"  AND
+                source.name = "$db_name";
+EOF4
   }
   else{
     $sql =(<<"EOF3");

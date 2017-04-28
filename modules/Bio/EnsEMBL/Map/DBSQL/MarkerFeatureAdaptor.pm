@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -143,24 +144,6 @@ sub fetch_all_by_Slice_and_priority {
 }
 
 
-
-=head2 fetch_all_by_RawContig_and_priority
-
-  Description: DEPRECATED use fetch_all_by_Slice_and_priority instead
-
-=cut
-
-sub fetch_all_by_RawContig_and_priority {
-  deprecate('Use fetch_all_by_Slice_and_priority() instead.');
-  fetch_all_by_Slice_and_priority(@_);
-}
-
-
-sub fetch_all_by_Slice_and_score {
-  my $self = shift;
-  throw('fetch_all_by_Slice_and_score should not be' .
-        'used to fetch marker_features');
-}
 
 sub _columns {
   my $self = shift;

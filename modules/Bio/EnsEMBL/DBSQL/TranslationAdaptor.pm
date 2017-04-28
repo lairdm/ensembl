@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -494,8 +495,14 @@ sub store {
       my $created = $self->db->dbc->from_seconds_to_date($translation->created_date());
       my $modified = $self->db->dbc->from_seconds_to_date($translation->modified_date());
 
-      push @canned_columns, 'created_date', 'modified_date';
-      push @canned_values,  $created,       $modified;
+      if ($created) {
+	push @canned_columns, 'created_date';
+	push @canned_values,  $created;
+      }
+      if ($modified) {
+	push @canned_columns, 'modified_date';
+	push @canned_values,  $modified;
+      }
   }
 
   my $columns = join(', ', @columns, @canned_columns);
@@ -775,6 +782,44 @@ sub fetch_by_stable_id {
    return $self->fetch_by_Transcript($transcript);
 }
 
+=head2 fetch_by_stable_id_version
+
+  Arg [1]    : String $id 
+               The stable ID of the gene to retrieve
+  Arg [2]    : Integer $version
+               The version of the stable_id to retrieve
+  Example    : $gene = $gene_adaptor->fetch_by_stable_id('ENSG00000148944', 14);
+  Description: Retrieves a gene object from the database via its stable id and version.
+               The gene will be retrieved in its native coordinate system (i.e.
+               in the coordinate system it is stored in the database). It may
+               be converted to a different coordinate system through a call to
+               transform() or transfer(). If the gene or exon is not found
+               undef is returned instead.
+  Returntype : Bio::EnsEMBL::Gene or undef
+  Exceptions : if we cant get the gene in given coord system
+  Caller     : general
+  Status     : Stable
+
+=cut
+
+sub fetch_by_stable_id_version {
+   my ($self,$stable_id, $version) = @_;
+
+   if(!$stable_id) {
+     throw("stable id argument is required");
+   }
+
+   # Enforce that version be numeric
+   return unless($version =~ /^\d+$/);
+
+   my $transcript_adaptor = $self->db()->get_TranscriptAdaptor();
+   my $transcript = 
+       $transcript_adaptor->fetch_by_translation_stable_id_version($stable_id, $version);
+
+   return if(!$transcript);
+
+   return $self->fetch_by_Transcript($transcript);
+}
 
 =head2 fetch_all_by_Transcript_list
 
@@ -898,49 +943,6 @@ sub fetch_all_by_Transcript_list {
 }
 
 
-
-=head2 fetch_all_by_DBEntry
-
-  Description: DEPRECATED, this has been renames fetch_all_by_external_name
-
-=cut
-
-sub fetch_all_by_DBEntry {
-  my $self = shift;
-  deprecate("Use fetch_all_by_external_name instead.");
-  return $self->fetch_all_by_external_name(@_);
-}
-
-=head2 get_stable_entry_info
-
- Description: DEPRECATED - This method should no longer be needed. Stable
-              id info is fetched when the transcript is.
-
-=cut
-
-sub get_stable_entry_info {
-  my ($self,$translation) = @_;
-
-  deprecate( "This method shouldnt be necessary any more" );
-
-  unless(defined $translation && ref $translation && 
-	 $translation->isa('Bio::EnsEMBL::Translation') ) {
-    throw("Needs a Translation object, not a [$translation]");
-  }
-
-  my $sth = $self->prepare("SELECT stable_id, version 
-                            FROM   translation
-                            WHERE  translation_id = ?");
-  $sth->bind_param(1,$translation->dbID,SQL_INTEGER);
-  $sth->execute();
-
-  my @array = $sth->fetchrow_array();
-  $translation->{'_stable_id'} = $array[0];
-  $translation->{'_version'}   = $array[1];
-
-  return 1;
-}
-
 =head2 fetch_all
 
   Example     : $translations = $translation_adaptor->fetch_all();
@@ -967,6 +969,20 @@ sub fetch_all {
      }
   }
   return \@translations;
+}
+
+
+# _tables
+#  Arg [1]    : none
+#  Description: PROTECTED implementation of superclass abstract method.
+#               Returns the names, aliases of the tables to use for queries.
+#  Returntype : list of listrefs of strings
+#  Exceptions : none
+#  Caller     : internal
+#  Status     : Stable
+
+sub _tables {
+  return (['translation', 'tl']);
 }
 
 1;

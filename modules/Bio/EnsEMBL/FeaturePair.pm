@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -108,6 +109,7 @@ use Bio::EnsEMBL::Utils::Exception qw(throw deprecate warning);
   Arg [HSPECIES]  : string - The species the hit sequence is from (optional)
   Arg [COVERAGE]  : string - The % of the query that this feature pair covers
   Arg [HCOVERAGE] : string - The % of the target this this feature pair covers
+  Arg [EXTRA_DATA]: HashRef - Additional data, specified as name, value attribute pairs (optional)
   Arg [...]       : Named superclass constructor args (Bio::EnsEMBL::Feature)
   Example    : $feat = Bio::EnsEMBL::FeaturePair->new(-start    => 132_231,
                                               -end      => 132_321,
@@ -716,64 +718,6 @@ sub level_id {
 
 =head1 DEPRECATED METHODS
 
-=cut
-
-=head2 feature1
-
-  Description: DEPRECATED use start(), end(), strand(), slice(), etc.
-               methods instead
-
-=cut
-
-sub feature1 {
-  my ($self, $arg) = @_;
-
-  deprecate('Use start(), end(), strand(), slice(), etc. methods instead.');
-
-  if ($arg) {
-	$self->start($arg->start());
-	$self->end($arg->end());
-	$self->strand($arg->strand());
-	$self->score($arg->score());
-	$self->percent_id($arg->percent_id());
-	$self->analysis($arg->analysis);
-	if ($arg->contig) {
-	  $self->slice($arg->contig);
-	}
-  }
-
-  return $self;
-}
-
-=head2 feature2
-
-  Description: DEPRECATED use hstart(), hend(), hstrand() etc.
-               methods instead
-
-=cut
-
-sub feature2 {
-  my ($self, $arg) = @_;
-
-  deprecate('Use hstart(),hend(),hstrand(),hseqname() methods instead.');
-
-  if (defined($arg)) {
-	$self->hstart($arg->start());
-	$self->hend($arg->end());
-	$self->hstrand($arg->strand());
-	$self->hseqname($arg->seqname());
-	return $arg;
-  }
-
-  return
-	new Bio::EnsEMBL::Feature(-START      => $self->hstart(),
-							  -END        => $self->hend(),
-							  -STRAND     => $self->hstrand(),
-							  -SCORE      => $self->score(),
-							  -PERCENT_ID => $self->percent_id(),
-							  -ANALYSIS   => $self->analysis,
-							  -SEQNAME    => $self->hseqname());
-}
 
 =head2 invert
 
@@ -827,130 +771,6 @@ sub invert {
   $self->{'slice'}  = $slice;
 } ## end sub invert
 
-=head2 validate
-
-  Description: DEPRECATED do not use
-
-=cut
-
-sub validate {
-  my ($self) = @_;
-
-  deprecate('This method does nothing and should not be used.');
-}
-
-=head2 validate_prot_feature
-
-  Description: DEPRECATED do not use
-
-=cut
-
-sub validate_prot_feature {
-  my ($self) = @_;
-
-  deprecate('This method does nothing and should not be used.');
-}
-
-=head2 set_featurepair_fields
-
-  Description: DEPRECATED do not use
-
-=cut
-
-sub set_featurepair_fields {
-  my ($self, $start, $end, $strand, $score, $seqname, $hstart, $hend, $hstrand, $hseqname, $analysis, $e_value, $perc_id, $phase, $end_phase) = @_;
-
-  deprecate("Use individual Getter/Setters or Constructor arguments " . " instead.\nThere is no advantage to using this method.");
-
-  throw('interface fault') if (@_ < 12 or @_ > 15);
-
-  $self->start($start);
-  $self->end($end);
-  $self->strand($strand);
-  $self->score($score);
-  $self->seqname($seqname);
-  $self->hstart($hstart);
-  $self->hend($hend);
-  $self->hstrand($hstrand);
-  $self->hseqname($hseqname);
-  $self->analysis($analysis);
-  $self->p_value($e_value)     if (defined $e_value);
-  $self->percent_id($perc_id)  if (defined $perc_id);
-  $self->phase($phase)         if (defined $phase);
-  $self->end_phase($end_phase) if (defined $end_phase);
-}
-
-=head2 gffstring
-
-  Description: DEPRECATED do not use
-
-=cut
-
-sub gffstring {
-  my ($self) = @_;
-
-  deprecate('Do not use');
-
-  my $str .= (defined $self->slice) ? $self->slice->name() . "\t" : "\t";
-  $str .= "\t";                                                     #source tag
-  $str .= "\t";                                                     #primary tag
-  $str .= (defined $self->start) ? $self->start . "\t" : "\t";
-  $str .= (defined $self->end) ? $self->end . "\t" : "\t";
-  $str .= (defined $self->score) ? $self->score . "\t" : "\t";
-  $str .= (defined $self->strand) ? $self->strand . "\t" : ".\t";
-  $str .= ".\t";                                                    #phase
-  $str .= ".\t";                                                    #end phase
-
-  my $hstrand = "+";
-
-  if (($self->hstrand) && ($self->hstrand == -1)) {
-	$hstrand = "-";
-  }
-
-  #Append a few FeaturePair specific things
-  $str .= (defined $self->hseqname) ? $self->hseqname . "\t" : "\t";
-  $str .= (defined $self->hstart)   ? $self->hstart . "\t"   : "\t";
-  $str .= (defined $self->hend)     ? $self->hend . "\t"     : "\t";
-  $str .= (defined $self->hstrand)  ? $hstrand . "\t"        : "\t";
-  $str .= (defined $self->hphase)   ? $self->hphase . "\t"   : ".\t";
-
-  return $str;
-} ## end sub gffstring
-
-=head2 hphase
-
-  Description: DEPRECATED do not use
-
-=cut
-
-sub hphase {
-  my ($self, $value) = @_;
-
-  deprecate('This method does nothing useful.');
-
-  if (defined($value)) {
-	$self->{_hphase} = $value;
-  }
-
-  return $self->{_hphase};
-}
-
-=head2 hend_phase
-
-  Description: DEPRECATED do not use
-
-=cut
-
-sub hend_phase {
-  my ($self, $value) = @_;
-
-  deprecate('This method does nothing useful.');
-
-  if (defined($value)) {
-	$self->{_hend_phase} = $value;
-  }
-  return $self->{_hend_phase};
-}
 
 sub extra_data {
   my $self = shift;

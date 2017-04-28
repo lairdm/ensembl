@@ -1,6 +1,7 @@
 =head1 LICENSE
 
 Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [2016-2017] EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -730,98 +731,6 @@ sub adaptor {
   weaken($self->{'adaptor'} = shift) if(@_);
   return $self->{'adaptor'};
 }
-
-
-=head2 in_assembly
-
-  Deprecated. Use map() or list_ids() instead
-
-=cut
-
-sub in_assembly {
-  my ($self, $object) = @_;
-
-  deprecate('Use map() or list_ids() instead.');
-
-  my $csa = $self->db->get_CoordSystemAdaptor();
-
-  my $top_level = $csa->fetch_top_level();
-
-  my $asma = $self->adaptor->fetch_by_CoordSystems($object->coord_system(),
-                                                   $top_level);
-
-  my @list = $asma->list_ids($object->seq_region(), $object->start(),
-                             $object->end(), $object->coord_system());
-
-  return (@list > 0);
-}
-
-
-=head2 map_coordinates_to_assembly
-
-  DEPRECATED use map() instead
-
-=cut
-
-sub map_coordinates_to_assembly {
-  my ($self, $contig_id, $start, $end, $strand) = @_;
-
-  deprecate('Use map() instead.');
-
-  #not sure if contig_id is seq_region_id or name...
-  return $self->map($contig_id, $start, $end, $strand,
-                   $self->contig_CoordSystem());
-
-}
-
-
-=head2 fast_to_assembly
-
-  DEPRECATED use map() instead
-
-=cut
-
-sub fast_to_assembly {
-  my ($self, $contig_id, $start, $end, $strand) = @_;
-
-  deprecate('Use map() instead.');
-
-  #not sure if contig_id is seq_region_id or name...
-  return $self->map($contig_id, $start, $end, $strand,
-                    $self->contig_CoordSystem());
-}
-
-
-=head2 map_coordinates_to_rawcontig
-
-  DEPRECATED use map() instead
-
-=cut
-
-sub map_coordinates_to_rawcontig {
-  my ($self, $chr_name, $start, $end, $strand) = @_;
-
-  deprecate('Use map() instead.');
-
-  return $self->map($chr_name, $start, $end, $strand,
-                    $self->assembled_CoordSystem());
-
-}
-
-=head2 list_contig_ids
-  DEPRECATED Use list_ids instead
-
-=cut
-
-sub list_contig_ids {
-  my ($self, $chr_name, $start, $end) = @_;
-
-  deprecate('Use list_ids() instead.');
-
-  return $self->list_ids($chr_name, $start, $end,
-                         $self->assembled_CoordSystem());
-}
-
 
 
 1;
