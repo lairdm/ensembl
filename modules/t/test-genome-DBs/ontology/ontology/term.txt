@@ -166,4 +166,3 @@
 44395	5	NULL	SO:0001263	ncRNA_gene	"" []	0	0
 45000	5	NULL	SO:0001877	lnc_RNA	"A non-coding RNA over 200nucleotides in length." [HGNC:mw]	0	0
 43375	5	SOFA	SO:0000234	mRNA	"Messenger RNA is the intermediate molecule between DNA and protein. It includes UTR and coding sequences. It does not contain introns." [SO:ma]	0	0
-44355	5	N	SO:0000234	mRNA	"Messenger RNA is the intermediate molecule between DNA and protein. It includes UTR and coding sequences. It does not contain introns." [SO:ma]	0	0
